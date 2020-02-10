@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -407,6 +408,23 @@ wtv_write(struct wtv_info* winfo)
             }
         }
     }
+    return 0;
+}
+
+/*****************************************************************************/
+int
+get_mstime(int* mstime)
+{
+    struct timespec ts;
+    int the_tick;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+    {
+        return 1;
+    }
+    the_tick = ts.tv_nsec / 1000000;
+    the_tick += ts.tv_sec * 1000;
+    *mstime = the_tick;
     return 0;
 }
 

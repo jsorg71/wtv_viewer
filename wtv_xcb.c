@@ -27,13 +27,11 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
     float yscale;
 
     (void)fd_bpp;
-
     xcb = (xcb_connection_t*)(wtv->xcb);
     pixmap = xcb_generate_id(xcb);
     xcb_dri3_pixmap_from_buffer(xcb, pixmap, wtv->drawable,
                                 fd_size, fd_width, fd_height,
                                 fd_stride, 24, 32, fd);
-
     src_picture = xcb_generate_id(xcb);
     xcb_render_create_picture(xcb, src_picture, pixmap,
                               wtv->pict_format_default, 0, NULL);

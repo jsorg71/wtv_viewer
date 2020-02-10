@@ -33,6 +33,7 @@ public:
     FXImage* m_image;
     int m_width;
     int m_height;
+    int m_cap_mstime;
 public:
     long onConfigure(FXObject* obj, FXSelector sel, void* ptr);
     long onResizeTimeout(FXObject* obj, FXSelector sel, void* ptr);
@@ -59,6 +60,7 @@ GUIObject::GUIObject() : FXObject()
     m_image = NULL;
     m_width = 0;
     m_height = 0;
+    m_cap_mstime = 0;
 }
 
 /*****************************************************************************/
@@ -80,7 +82,8 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv) : FXObject()
     m_height = 0;
     ih = (FXInputHandle)(wtv->sck);
     m_app->addInput(ih, INPUT_READ, this, GUIObject::ID_SOCKET);
-    m_app->addTimeout(this, GUIObject::ID_FRAME, 30, NULL);
+    m_app->addTimeout(this, GUIObject::ID_FRAME, 100, NULL);
+    m_cap_mstime = 0;
 }
 
 /*****************************************************************************/
@@ -199,12 +202,14 @@ GUIObject::onEventWrite(FXObject* obj, FXSelector sel, void* ptr)
     return 1;
 }
 
+#define FRAME_MSTIME 33
+
 /*****************************************************************************/
 long
 GUIObject::onFrameTimeout(FXObject* obj, FXSelector sel, void* ptr)
 {
     wtv_request_frame(m_wtv);
-    m_app->addTimeout(this, GUIObject::ID_FRAME, 40, NULL);
+    m_app->addTimeout(this, GUIObject::ID_FRAME, FRAME_MSTIME, NULL);
     return 1;
 }
 

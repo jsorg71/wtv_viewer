@@ -36,6 +36,8 @@ wtv_write(struct wtv_info* winfo);
 /* in gui */
 int
 wtv_check_write(struct wtv_info* winfo);
+int
+get_mstime(int* mstime);;
 
 #ifdef __cplusplus
 }
