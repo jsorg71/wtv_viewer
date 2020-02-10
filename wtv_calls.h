@@ -9,6 +9,8 @@ struct wtv_info
     struct stream* in_s;
     struct stream* out_s_head;
     struct stream* out_s_tail;
+    struct stream* audio_head;
+    struct stream* audio_tail;
     int sck;
     int drawable;
     int drawable_width;
@@ -32,10 +34,14 @@ int
 wtv_read(struct wtv_info* winfo);
 int
 wtv_write(struct wtv_info* winfo);
+int
+wtv_check_audio(struct wtv_info* winfo);
 
 /* in gui */
 int
 wtv_check_write(struct wtv_info* winfo);
+int
+wtv_sched_audio(struct wtv_info* winfo);
 int
 get_mstime(int* mstime);;
 

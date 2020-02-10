@@ -57,6 +57,46 @@ wtv_out_stream(struct wtv_info* winfo, struct stream* out_s)
 }
 
 /*****************************************************************************/
+int
+wtv_check_audio(struct wtv_info* winfo)
+{
+    struct stream* audio_s;
+    int bytes;
+    int data_bytes_processed;
+
+    //printf("wtv_check_audio:\n");
+    audio_s = winfo->audio_head;
+    if (audio_s != NULL)
+    {
+        bytes = audio_s->end - audio_s->p;
+        if (wtv_pa_play_non_blocking(winfo->pa, audio_s->p, bytes,
+                                     &data_bytes_processed) == 0)
+        {
+            audio_s->p += data_bytes_processed;
+            if (audio_s->p >= audio_s->end)
+            {
+                if (audio_s->next == NULL)
+                {
+                    winfo->audio_head = NULL;
+                    winfo->audio_tail = NULL;
+                }
+                else
+                {
+                    winfo->audio_head = winfo->audio_head->next;
+                }
+                free(audio_s->data);
+                free(audio_s);
+            }
+        }
+    }
+    if (winfo->audio_head != NULL)
+    {
+        wtv_sched_audio(winfo);
+    }
+    return 0;
+}
+
+/*****************************************************************************/
 static int
 wtv_process_msg_audio(struct wtv_info* winfo)
 {
@@ -68,6 +108,7 @@ wtv_process_msg_audio(struct wtv_info* winfo)
     int format;
     struct stream* in_s;
     struct stream* out_s;
+    struct stream* audio_s;
 
     in_s = winfo->in_s;
     if (!s_check_rem(in_s, 16))
@@ -107,6 +148,36 @@ wtv_process_msg_audio(struct wtv_info* winfo)
     }
     if (winfo->pa != NULL)
     {
+        audio_s = calloc(1, sizeof(struct stream));
+        audio_s->size = bytes;
+        audio_s->data = (char*)malloc(audio_s->size);
+        audio_s->p = audio_s->data;
+        out_uint8p(audio_s, in_s->p, bytes);
+        audio_s->end = audio_s->p;
+        audio_s->p = audio_s->data;
+
+        if (winfo->audio_tail == NULL)
+        {
+            winfo->audio_head = audio_s;
+            winfo->audio_tail = audio_s;
+        }
+        else
+        {
+            winfo->audio_tail->next = audio_s;
+            winfo->audio_tail = audio_s;
+        }
+        wtv_check_audio(winfo);
+#if 0
+        if (winfo->audio_s == NULL)
+        {
+            winfo->audio_s = calloc(1, sizeof(struct stream));
+            winfo->audio_s->size = 1024 * 1024;
+            winfo->audio_s->data = (char*)malloc(winfo->audio_s->size);
+        }
+        if (winfo->audio_s != NULL)
+        {
+            out_uint
+        }
         //wtv_pa_play(winfo->pa, in_s->p, bytes);
         if (wtv_pa_play_non_blocking(winfo->pa, in_s->p, bytes,
                                      &data_bytes_processed) != 0)
@@ -117,6 +188,7 @@ wtv_process_msg_audio(struct wtv_info* winfo)
         {
             printf("lost bytes\n");
         }
+#endif
     }
     return 0;
 }

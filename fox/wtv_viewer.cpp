@@ -26,6 +26,7 @@ public:
     virtual ~GUIObject();
     int mainLoop();
     int checkWrite();
+    int schedAudio();
 public:
     struct wtv_info* m_wtv;
     FXApp* m_app;
@@ -42,11 +43,13 @@ public:
     long onEventRead(FXObject* obj, FXSelector sel, void* ptr);
     long onEventWrite(FXObject* obj, FXSelector sel, void* ptr);
     long onFrameTimeout(FXObject* obj, FXSelector sel, void* ptr);
+    long onAudioTimeout(FXObject* obj, FXSelector sel, void* ptr);
     enum _ids
     {
         ID_MAINWINDOW = 0,
         ID_SOCKET,
         ID_FRAME,
+        ID_AUDIO,
         ID_LAST
     };
 };
@@ -115,6 +118,14 @@ int GUIObject::checkWrite()
     {
         m_app->addInput(ih, INPUT_WRITE, this, GUIObject::ID_SOCKET);
     }
+    return 0;
+}
+
+/*****************************************************************************/
+int GUIObject::schedAudio()
+{
+    //printf("GUIObject::schedAudio:\n");
+    m_app->addTimeout(this, GUIObject::ID_AUDIO, 33, NULL);
     return 0;
 }
 
@@ -213,6 +224,14 @@ GUIObject::onFrameTimeout(FXObject* obj, FXSelector sel, void* ptr)
     return 1;
 }
 
+/*****************************************************************************/
+long GUIObject::onAudioTimeout(FXObject* obj, FXSelector sel, void* ptr)
+{
+    //printf("GUIObject::onAudioTimeout:\n");
+    wtv_check_audio(m_wtv);
+    return 1;
+}
+
 FXDEFMAP(GUIObject) GUIObjectMap[] =
 {
     FXMAPFUNC(SEL_CONFIGURE, GUIObject::ID_MAINWINDOW, GUIObject::onConfigure),
@@ -221,7 +240,8 @@ FXDEFMAP(GUIObject) GUIObjectMap[] =
     FXMAPFUNC(SEL_UPDATE, GUIObject::ID_MAINWINDOW, GUIObject::onUpdate),
     FXMAPFUNC(SEL_IO_READ, GUIObject::ID_SOCKET, GUIObject::onEventRead),
     FXMAPFUNC(SEL_IO_WRITE, GUIObject::ID_SOCKET, GUIObject::onEventWrite),
-    FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_FRAME, GUIObject::onFrameTimeout)
+    FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_FRAME, GUIObject::onFrameTimeout),
+    FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_AUDIO, GUIObject::onAudioTimeout)
 };
 
 FXIMPLEMENT(GUIObject, FXObject, GUIObjectMap, ARRAYNUMBER(GUIObjectMap))
@@ -331,6 +351,17 @@ wtv_check_write(struct wtv_info* wtv)
 
     go = (GUIObject*)(wtv->gui_obj);
     go->checkWrite();
+    return 0;
+}
+
+/*****************************************************************************/
+int
+wtv_sched_audio(struct wtv_info* wtv)
+{
+    GUIObject* go;
+
+    go = (GUIObject*)(wtv->gui_obj);
+    go->schedAudio();
     return 0;
 }
 
