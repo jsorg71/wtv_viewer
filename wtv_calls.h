@@ -11,11 +11,11 @@ struct wtv_info
     struct stream* out_s_tail;
     struct stream* audio_head;
     struct stream* audio_tail;
+    int audio_bytes;
     int sck;
     int drawable;
     int drawable_width;
     int drawable_height;
-    int pad0;
     int pict_format_default;
     void* xcb;
 };
