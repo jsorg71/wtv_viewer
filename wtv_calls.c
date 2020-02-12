@@ -173,7 +173,7 @@ wtv_process_msg_audio(struct wtv_info* winfo)
             winfo->audio_bytes += bytes;
             wtv_check_audio(winfo);
         }
-        printf("winfo->audio_bytes %d\n", winfo->audio_bytes);
+        //printf("winfo->audio_bytes %d\n", winfo->audio_bytes);
 #else
         //wtv_pa_play(winfo->pa, in_s->p, bytes);
         if (wtv_pa_play_non_blocking(winfo->pa, in_s->p, bytes,
