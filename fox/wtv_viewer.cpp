@@ -286,7 +286,7 @@ gui_create(int argc, char** argv, struct wtv_info** wtv)
     xcb_render_query_pict_formats_cookie_t cookie;
 
     *wtv = (struct wtv_info*)calloc(1, sizeof(struct wtv_info));
-    (*wtv)->sck = wtv_connect_to_uds("/tmp/wtv_hdhrd0");
+    (*wtv)->sck = wtv_connect_to_uds(NULL);
     go = new GUIObject(argc, argv, *wtv);
     (*wtv)->gui_obj = go;
     xcb = XGetXCBConnection((Display*)(go->m_app->getDisplay()));

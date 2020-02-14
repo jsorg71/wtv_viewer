@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
+#include <dirent.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -308,12 +309,56 @@ wtv_process_msg(struct wtv_info* winfo)
 }
 
 /*****************************************************************************/
+const char *
+get_filename(char* filename, int bytes)
+{
+    DIR * ldir;
+    struct dirent * entry;
+    int count;
+
+    count = 0;
+    ldir = opendir("/tmp");
+    if (ldir != NULL)
+    {
+        entry = readdir(ldir);
+        while (entry != NULL)
+        {
+            if (strncmp(entry->d_name, "wtv_", 3) == 0)
+            {
+                if (entry->d_type == DT_SOCK)
+                {
+                    snprintf(filename, bytes, "/tmp/%s", entry->d_name);
+                    count++;
+                }
+            }
+            entry = readdir(ldir);
+        }
+        closedir(ldir);
+    }
+    if (count == 1)
+    {
+        return filename;
+    }
+    return NULL;
+}
+
+/*****************************************************************************/
 int
 wtv_connect_to_uds(const char* filename)
 {
     struct sockaddr_un s;
     int sck;
+    char lfilename[256];
 
+    if (filename == NULL)
+    {
+        filename = get_filename(lfilename, 255);
+    }
+    if (filename == NULL)
+    {
+        return -1;
+    }
+    printf("wtv_connect_to_uds: connecting to %s\n", filename);
     sck = socket(PF_LOCAL, SOCK_STREAM, 0);
     if (sck == -1)
     {
