@@ -381,12 +381,12 @@ wtv_pa_play_non_blocking(void* handle, void* data, int data_bytes,
     self = (struct wtv_pa*)handle;
     pa_threaded_mainloop_lock(self->pa_mainloop);
 
- #if 0
+#if 0
     pa_usec_t latency;
     int negative;
     pa_stream_get_latency(self->pa_stream, &latency, &negative);
     printf("latency %ld negative %d\n", latency, negative);
- #endif
+#endif
 
     src = (char*)data;
     bytes_played = 0;
@@ -418,6 +418,26 @@ wtv_pa_play_non_blocking(void* handle, void* data, int data_bytes,
     if (data_bytes_processed != 0)
     {
         *data_bytes_processed = bytes_played;
+    }
+    return 0;
+}
+
+/******************************************************************************/
+int
+wtv_pa_print_stats(void* handle)
+{
+    struct wtv_pa* self;
+    pa_usec_t latency;
+    int negative;
+
+    self = (struct wtv_pa*)handle;
+    if (self != NULL)
+    {
+        if (self->pa_stream != NULL)
+        {
+            pa_stream_get_latency(self->pa_stream, &latency, &negative);
+            printf("latency %ld negative %d\n", latency, negative);
+        }
     }
     return 0;
 }

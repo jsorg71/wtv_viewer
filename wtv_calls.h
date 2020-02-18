@@ -44,6 +44,8 @@ int
 wtv_sched_audio(struct wtv_info* winfo);
 int
 get_mstime(int* mstime);;
+int
+wtv_print_stats(struct wtv_info* winfo);
 
 #ifdef __cplusplus
 }

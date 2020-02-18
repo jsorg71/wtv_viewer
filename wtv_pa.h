@@ -42,6 +42,8 @@ wtv_pa_play(void* handle, void* data, int data_bytes);
 int
 wtv_pa_play_non_blocking(void* handle, void* data, int data_bytes,
                          int* data_bytes_processed);
+int
+wtv_pa_print_stats(void* handle);
 
 #ifdef __cplusplus
 }

@@ -174,6 +174,10 @@ wtv_process_msg_audio(struct wtv_info* winfo)
             winfo->audio_bytes += bytes;
             wtv_check_audio(winfo);
         }
+        else
+        {
+            printf("wtv_process_msg_audio: dropping audio data\n");
+        }
         //printf("winfo->audio_bytes %d\n", winfo->audio_bytes);
 #else
         //wtv_pa_play(winfo->pa, in_s->p, bytes);
@@ -539,6 +543,14 @@ get_mstime(int* mstime)
     the_tick = ts.tv_nsec / 1000000;
     the_tick += ts.tv_sec * 1000;
     *mstime = the_tick;
+    return 0;
+}
+
+/*****************************************************************************/
+int
+wtv_print_stats(struct wtv_info* winfo)
+{
+    wtv_pa_print_stats(winfo->pa);
     return 0;
 }
 

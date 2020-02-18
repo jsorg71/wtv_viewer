@@ -44,12 +44,14 @@ public:
     long onEventWrite(FXObject* obj, FXSelector sel, void* ptr);
     long onFrameTimeout(FXObject* obj, FXSelector sel, void* ptr);
     long onAudioTimeout(FXObject* obj, FXSelector sel, void* ptr);
+    long onStatsTimeout(FXObject* obj, FXSelector sel, void* ptr);
     enum _ids
     {
         ID_MAINWINDOW = 0,
         ID_SOCKET,
         ID_FRAME,
         ID_AUDIO,
+        ID_STATS,
         ID_LAST
     };
 };
@@ -86,6 +88,7 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv) : FXObject()
     ih = (FXInputHandle)(wtv->sck);
     m_app->addInput(ih, INPUT_READ, this, GUIObject::ID_SOCKET);
     m_app->addTimeout(this, GUIObject::ID_FRAME, 100, NULL);
+    m_app->addTimeout(this, GUIObject::ID_STATS, 60000, NULL);
     m_cap_mstime = 0;
 }
 
@@ -232,6 +235,16 @@ long GUIObject::onAudioTimeout(FXObject* obj, FXSelector sel, void* ptr)
     return 1;
 }
 
+/*****************************************************************************/
+long
+GUIObject::onStatsTimeout(FXObject* obj, FXSelector sel, void* ptr)
+{
+    printf("GUIObject::onStatsTimeout:\n");
+    wtv_print_stats(m_wtv);
+    m_app->addTimeout(this, GUIObject::ID_STATS, 60000, NULL);
+    return 1;
+}
+
 FXDEFMAP(GUIObject) GUIObjectMap[] =
 {
     FXMAPFUNC(SEL_CONFIGURE, GUIObject::ID_MAINWINDOW, GUIObject::onConfigure),
@@ -241,7 +254,8 @@ FXDEFMAP(GUIObject) GUIObjectMap[] =
     FXMAPFUNC(SEL_IO_READ, GUIObject::ID_SOCKET, GUIObject::onEventRead),
     FXMAPFUNC(SEL_IO_WRITE, GUIObject::ID_SOCKET, GUIObject::onEventWrite),
     FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_FRAME, GUIObject::onFrameTimeout),
-    FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_AUDIO, GUIObject::onAudioTimeout)
+    FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_AUDIO, GUIObject::onAudioTimeout),
+    FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_STATS, GUIObject::onStatsTimeout)
 };
 
 FXIMPLEMENT(GUIObject, FXObject, GUIObjectMap, ARRAYNUMBER(GUIObjectMap))
