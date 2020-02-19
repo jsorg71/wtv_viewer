@@ -551,6 +551,7 @@ int
 wtv_print_stats(struct wtv_info* winfo)
 {
     wtv_pa_print_stats(winfo->pa);
+    printf("wtv_print_stats: audio_bytes %d\n", winfo->audio_bytes);
     return 0;
 }
 

@@ -36,16 +36,16 @@ int
 wtv_write(struct wtv_info* winfo);
 int
 wtv_check_audio(struct wtv_info* winfo);
+int
+get_mstime(int* mstime);;
+int
+wtv_print_stats(struct wtv_info* winfo);
 
 /* in gui */
 int
 wtv_check_write(struct wtv_info* winfo);
 int
 wtv_sched_audio(struct wtv_info* winfo);
-int
-get_mstime(int* mstime);;
-int
-wtv_print_stats(struct wtv_info* winfo);
 
 #ifdef __cplusplus
 }

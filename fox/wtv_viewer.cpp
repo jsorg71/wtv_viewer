@@ -16,6 +16,9 @@
 
 #include "parse.h"
 #include "wtv_calls.h"
+#include "wtv_picker.h"
+
+#define FRAME_MSTIME 33
 
 class GUIObject : public FXObject
 {
@@ -45,6 +48,7 @@ public:
     long onFrameTimeout(FXObject* obj, FXSelector sel, void* ptr);
     long onAudioTimeout(FXObject* obj, FXSelector sel, void* ptr);
     long onStatsTimeout(FXObject* obj, FXSelector sel, void* ptr);
+    long onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr);
     enum _ids
     {
         ID_MAINWINDOW = 0,
@@ -52,6 +56,7 @@ public:
         ID_FRAME,
         ID_AUDIO,
         ID_STATS,
+        ID_STARTUP,
         ID_LAST
     };
 };
@@ -71,8 +76,6 @@ GUIObject::GUIObject() : FXObject()
 /*****************************************************************************/
 GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv) : FXObject()
 {
-    FXInputHandle ih;
-
     m_wtv = wtv;
     m_app = new FXApp("wtv_viewer", "wtv_viewer");
     m_mw = new FXMainWindow(m_app, "wtv_viewer", NULL, NULL, DECOR_ALL,
@@ -85,10 +88,7 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv) : FXObject()
     m_image = NULL;
     m_width = 0;
     m_height = 0;
-    ih = (FXInputHandle)(wtv->sck);
-    m_app->addInput(ih, INPUT_READ, this, GUIObject::ID_SOCKET);
-    m_app->addTimeout(this, GUIObject::ID_FRAME, 100, NULL);
-    m_app->addTimeout(this, GUIObject::ID_STATS, 60000, NULL);
+    m_app->addTimeout(this, GUIObject::ID_STARTUP, 100, NULL);
     m_cap_mstime = 0;
 }
 
@@ -216,8 +216,6 @@ GUIObject::onEventWrite(FXObject* obj, FXSelector sel, void* ptr)
     return 1;
 }
 
-#define FRAME_MSTIME 33
-
 /*****************************************************************************/
 long
 GUIObject::onFrameTimeout(FXObject* obj, FXSelector sel, void* ptr)
@@ -245,6 +243,53 @@ GUIObject::onStatsTimeout(FXObject* obj, FXSelector sel, void* ptr)
     return 1;
 }
 
+/*****************************************************************************/
+long
+GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
+{
+    FXInputHandle ih;
+    FXbool ok;
+    FXListItem* item;
+    FXString str;
+    PickerDialog* picker;
+    int index;
+    int count;
+
+    printf("GUIObject::onStartupTimeout:\n");
+    picker = new PickerDialog(m_app, m_mw, m_wtv);
+    ok = picker->execute(PLACEMENT_OWNER);
+    if (!ok)
+    {
+        return 1;
+    }
+    count = picker->m_list->getNumItems();
+    for (index = 0; index < count; index++)
+    {
+        if (picker->m_list->isItemSelected(index))
+        {
+            item = picker->m_list->getItem(index);
+            str = item->getText();
+            break;
+        }
+    }
+    delete picker;
+    if (index == count)
+    {
+        return 1;
+    }
+    m_wtv->sck = wtv_connect_to_uds(str.text());
+    if (m_wtv->sck == -1)
+    {
+        return 1;
+    }
+    wtv_start(m_wtv);
+    ih = (FXInputHandle)(m_wtv->sck);
+    m_app->addInput(ih, INPUT_READ, this, GUIObject::ID_SOCKET);
+    m_app->addTimeout(this, GUIObject::ID_FRAME, 100, NULL);
+    m_app->addTimeout(this, GUIObject::ID_STATS, 60000, NULL);
+    return 1;
+}
+
 FXDEFMAP(GUIObject) GUIObjectMap[] =
 {
     FXMAPFUNC(SEL_CONFIGURE, GUIObject::ID_MAINWINDOW, GUIObject::onConfigure),
@@ -255,7 +300,8 @@ FXDEFMAP(GUIObject) GUIObjectMap[] =
     FXMAPFUNC(SEL_IO_WRITE, GUIObject::ID_SOCKET, GUIObject::onEventWrite),
     FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_FRAME, GUIObject::onFrameTimeout),
     FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_AUDIO, GUIObject::onAudioTimeout),
-    FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_STATS, GUIObject::onStatsTimeout)
+    FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_STATS, GUIObject::onStatsTimeout),
+    FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_STARTUP, GUIObject::onStartupTimeout)
 };
 
 FXIMPLEMENT(GUIObject, FXObject, GUIObjectMap, ARRAYNUMBER(GUIObjectMap))
@@ -300,7 +346,6 @@ gui_create(int argc, char** argv, struct wtv_info** wtv)
     xcb_render_query_pict_formats_cookie_t cookie;
 
     *wtv = (struct wtv_info*)calloc(1, sizeof(struct wtv_info));
-    (*wtv)->sck = wtv_connect_to_uds(NULL);
     go = new GUIObject(argc, argv, *wtv);
     (*wtv)->gui_obj = go;
     xcb = XGetXCBConnection((Display*)(go->m_app->getDisplay()));
@@ -312,7 +357,6 @@ gui_create(int argc, char** argv, struct wtv_info** wtv)
     (*wtv)->pict_format_default =
             find_format_for_visual(formats, screen->root_visual);
     free(formats);
-    wtv_start(*wtv);
     return 0;
 }
 
