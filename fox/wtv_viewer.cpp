@@ -260,6 +260,7 @@ GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
     ok = picker->execute(PLACEMENT_OWNER);
     if (!ok)
     {
+        m_app->exit();
         return 1;
     }
     count = picker->m_list->getNumItems();
@@ -275,11 +276,13 @@ GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
     delete picker;
     if (index == count)
     {
+        m_app->exit();
         return 1;
     }
     m_wtv->sck = wtv_connect_to_uds(str.text());
     if (m_wtv->sck == -1)
     {
+        m_app->exit();
         return 1;
     }
     wtv_start(m_wtv);

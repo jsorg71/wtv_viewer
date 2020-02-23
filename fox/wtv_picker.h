@@ -11,10 +11,12 @@ public:
     virtual ~PickerDialog();
     long onPress(FXObject* obj, FXSelector sel, void* ptr);
     long onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr);
+    long onDoubleClicked(FXObject* obj, FXSelector sel, void* ptr);
 public:
     enum _ids
     {
         ID_BUTTON = FXDialogBox::ID_LAST,
+        ID_LIST,
         ID_STARTUP,
         ID_LAST
     };

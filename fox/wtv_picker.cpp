@@ -12,7 +12,8 @@
 FXDEFMAP(PickerDialog) PickerDialogMap[] =
 {
     FXMAPFUNC(SEL_COMMAND, PickerDialog::ID_BUTTON, PickerDialog::onPress),
-    FXMAPFUNC(SEL_TIMEOUT, PickerDialog::ID_STARTUP, PickerDialog::onStartupTimeout)
+    FXMAPFUNC(SEL_TIMEOUT, PickerDialog::ID_STARTUP, PickerDialog::onStartupTimeout),
+    FXMAPFUNC(SEL_DOUBLECLICKED, PickerDialog::ID_LIST, PickerDialog::onDoubleClicked)
 };
 
 FXIMPLEMENT(PickerDialog, FXDialogBox, PickerDialogMap, ARRAYNUMBER(PickerDialogMap))
@@ -21,6 +22,7 @@ FXIMPLEMENT(PickerDialog, FXDialogBox, PickerDialogMap, ARRAYNUMBER(PickerDialog
 PickerDialog::PickerDialog() : FXDialogBox()
 {
     m_ok_but = NULL;
+    m_cancel_but = NULL;
     m_app = NULL;
     m_wtv = NULL;
 }
@@ -30,13 +32,12 @@ PickerDialog::PickerDialog(FXApp* app, FXWindow* parent, struct wtv_info* wtv) :
 {
     FXuint flags;
     FXSelector sel;
-    //FXString ver;
 
     //LOGLN0((fi, LOG_INFO, LOGS, LOGP));
     setWidth(400);
     setHeight(400);
 
-    flags = BUTTON_NORMAL | LAYOUT_EXPLICIT | BUTTON_DEFAULT;
+    flags = BUTTON_INITIAL | BUTTON_NORMAL | LAYOUT_EXPLICIT | BUTTON_DEFAULT;
     sel = PickerDialog::ID_BUTTON;
     m_ok_but = new FXButton(this, "&Ok", NULL, this, sel, flags, 200, 360, 80, 30);
 
@@ -45,11 +46,13 @@ PickerDialog::PickerDialog(FXApp* app, FXWindow* parent, struct wtv_info* wtv) :
     m_cancel_but = new FXButton(this, "&Cancel", NULL, this, sel, flags, 300, 360, 80, 30);
 
     flags = LAYOUT_EXPLICIT | LIST_NORMAL;
-    m_list = new FXList(this, NULL, 0, flags, 10, 10, 380, 340);
+    //flags = FRAME_SUNKEN | FRAME_THICK | LAYOUT_EXPLICIT | LIST_NORMAL;
+    //flags = FRAME_SUNKEN | FRAME_THICK | LAYOUT_EXPLICIT;
+    sel = PickerDialog::ID_LIST;
+    m_list = new FXList(this, this, sel, flags, 10, 10, 380, 340);
 
     m_app = app;
     m_wtv = wtv;
-    m_ok_but->setFocus();
 
     m_app->addTimeout(this, PickerDialog::ID_STARTUP, 100, NULL);
 }
@@ -104,8 +107,15 @@ PickerDialog::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
     if (index >= 0)
     {
         m_list->selectItem(index);
-        m_list->setFocus();
     }
+    m_list->setFocus();
     return 1;
 }
 
+/*****************************************************************************/
+long
+PickerDialog::onDoubleClicked(FXObject* obj, FXSelector sel, void* ptr)
+{
+    printf("PickerDialog::onDoubleClicked:\n");
+    return onCmdAccept(obj, sel, ptr);
+}
