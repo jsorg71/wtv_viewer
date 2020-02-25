@@ -2,7 +2,7 @@
 #if !defined(WTV_GUI_PICKER_H)
 #define WTV_GUI_PICKER_H
 
-class PickerDialog : public FXDialogBox
+class PickerDialog:public FXDialogBox
 {
     FXDECLARE(PickerDialog)
 public:

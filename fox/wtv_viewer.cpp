@@ -20,7 +20,7 @@
 
 #define FRAME_MSTIME 33
 
-class GUIObject : public FXObject
+class GUIObject:public FXObject
 {
     FXDECLARE(GUIObject)
 public:
@@ -62,7 +62,7 @@ public:
 };
 
 /*****************************************************************************/
-GUIObject::GUIObject() : FXObject()
+GUIObject::GUIObject():FXObject()
 {
     m_wtv = NULL;
     m_app = NULL;
@@ -74,7 +74,7 @@ GUIObject::GUIObject() : FXObject()
 }
 
 /*****************************************************************************/
-GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv) : FXObject()
+GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
 {
     m_wtv = wtv;
     m_app = new FXApp("wtv_viewer", "wtv_viewer");
@@ -127,7 +127,7 @@ int GUIObject::checkWrite()
 /*****************************************************************************/
 int GUIObject::schedAudio()
 {
-    //printf("GUIObject::schedAudio:\n");
+    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     m_app->addTimeout(this, GUIObject::ID_AUDIO, 33, NULL);
     return 0;
 }
@@ -136,7 +136,7 @@ int GUIObject::schedAudio()
 long
 GUIObject::onConfigure(FXObject* obj, FXSelector sel, void* ptr)
 {
-    //printf("GUIObject::onConfigure:\n");
+    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     m_app->addTimeout(this, GUIObject::ID_MAINWINDOW, 0, NULL);
     return 1;
 }
@@ -148,12 +148,12 @@ GUIObject::onResizeTimeout(FXObject* obj, FXSelector sel, void* ptr)
     int width;
     int height;
 
-    //printf("GUIObject::onResizeTimeout:\n");
+    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     width = m_mw->getWidth();
     height = m_mw->getHeight();
     if ((width != m_width) || (height != m_height))
     {
-        printf("GUIObject::onResizeTimeout: resize to %dx%d\n", width, height);
+        LOGLN0((m_wtv, LOG_INFO, LOGS "resize to %dx%d", LOGP, width, height));
         m_wtv->drawable_width = m_width = width;
         m_wtv->drawable_height = m_height = height;
         delete m_image;
@@ -166,7 +166,7 @@ GUIObject::onResizeTimeout(FXObject* obj, FXSelector sel, void* ptr)
 long
 GUIObject::onPaint(FXObject* obj, FXSelector sel, void* ptr)
 {
-    printf("GUIObject::onPaint:\n");
+    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     return 1;
 }
 
@@ -174,7 +174,7 @@ GUIObject::onPaint(FXObject* obj, FXSelector sel, void* ptr)
 long
 GUIObject::onUpdate(FXObject* obj, FXSelector sel, void* ptr)
 {
-    //printf("GUIObject::onUpdate:\n");
+    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     return 1;
 }
 
@@ -184,11 +184,11 @@ GUIObject::onEventRead(FXObject* obj, FXSelector sel, void* ptr)
 {
     FXInputHandle ih;
 
-    //printf("GUIObject::onEventRead:\n");
+    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     ih = (FXInputHandle)(m_wtv->sck);
     if (wtv_read(m_wtv) != 0)
     {
-        printf("GUIObject::onEventRead: wtv_read failed\n");
+        LOGLN0((m_wtv, LOG_ERROR, LOGS "wtv_read failed", LOGP));
         m_app->removeInput(ih, INPUT_READ);
         m_app->removeInput(ih, INPUT_WRITE);
         return 0;
@@ -203,11 +203,11 @@ GUIObject::onEventWrite(FXObject* obj, FXSelector sel, void* ptr)
 {
     FXInputHandle ih;
 
-    //printf("GUIObject::onEventWrite:\n");
+    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     ih = (FXInputHandle)(m_wtv->sck);
     if (wtv_write(m_wtv) != 0)
     {
-        printf("GUIObject::onEventWrite: wtv_write failed\n");
+        LOGLN0((m_wtv, LOG_ERROR, LOGS "wtv_write failed", LOGP));
         m_app->removeInput(ih, INPUT_READ);
         m_app->removeInput(ih, INPUT_WRITE);
         return 0;
@@ -228,7 +228,7 @@ GUIObject::onFrameTimeout(FXObject* obj, FXSelector sel, void* ptr)
 /*****************************************************************************/
 long GUIObject::onAudioTimeout(FXObject* obj, FXSelector sel, void* ptr)
 {
-    //printf("GUIObject::onAudioTimeout:\n");
+    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     wtv_check_audio(m_wtv);
     return 1;
 }
@@ -237,7 +237,7 @@ long GUIObject::onAudioTimeout(FXObject* obj, FXSelector sel, void* ptr)
 long
 GUIObject::onStatsTimeout(FXObject* obj, FXSelector sel, void* ptr)
 {
-    printf("GUIObject::onStatsTimeout:\n");
+    LOGLN0((m_wtv, LOG_INFO, LOGS, LOGP));
     wtv_print_stats(m_wtv);
     m_app->addTimeout(this, GUIObject::ID_STATS, 60000, NULL);
     return 1;
@@ -255,7 +255,7 @@ GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
     int index;
     int count;
 
-    printf("GUIObject::onStartupTimeout:\n");
+    LOGLN0((m_wtv, LOG_INFO, LOGS, LOGP));
     picker = new PickerDialog(m_app, m_mw, m_wtv);
     ok = picker->execute(PLACEMENT_OWNER);
     if (!ok)
@@ -279,7 +279,7 @@ GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
         m_app->exit();
         return 1;
     }
-    m_wtv->sck = wtv_connect_to_uds(str.text());
+    m_wtv->sck = wtv_connect_to_uds(m_wtv, str.text());
     if (m_wtv->sck == -1)
     {
         m_app->exit();
@@ -423,6 +423,14 @@ wtv_sched_audio(struct wtv_info* wtv)
 
     go = (GUIObject*)(wtv->gui_obj);
     go->schedAudio();
+    return 0;
+}
+
+/*****************************************************************************/
+int
+wtv_writeln(struct wtv_info* wtv, const char* msg)
+{
+    printf("%s\n", msg);
     return 0;
 }
 

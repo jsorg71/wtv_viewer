@@ -19,7 +19,7 @@ FXDEFMAP(PickerDialog) PickerDialogMap[] =
 FXIMPLEMENT(PickerDialog, FXDialogBox, PickerDialogMap, ARRAYNUMBER(PickerDialogMap))
 
 /*****************************************************************************/
-PickerDialog::PickerDialog() : FXDialogBox()
+PickerDialog::PickerDialog():FXDialogBox()
 {
     m_ok_but = NULL;
     m_cancel_but = NULL;
@@ -28,12 +28,13 @@ PickerDialog::PickerDialog() : FXDialogBox()
 }
 
 /*****************************************************************************/
-PickerDialog::PickerDialog(FXApp* app, FXWindow* parent, struct wtv_info* wtv) : FXDialogBox(parent, "Pick")
+PickerDialog::PickerDialog(FXApp* app, FXWindow* parent, struct wtv_info* wtv):FXDialogBox(parent, "Pick")
 {
     FXuint flags;
     FXSelector sel;
 
-    //LOGLN0((fi, LOG_INFO, LOGS, LOGP));
+    LOGLN0((wtv, LOG_INFO, LOGS, LOGP));
+
     setWidth(400);
     setHeight(400);
 
@@ -46,8 +47,6 @@ PickerDialog::PickerDialog(FXApp* app, FXWindow* parent, struct wtv_info* wtv) :
     m_cancel_but = new FXButton(this, "&Cancel", NULL, this, sel, flags, 300, 360, 80, 30);
 
     flags = LAYOUT_EXPLICIT | LIST_NORMAL;
-    //flags = FRAME_SUNKEN | FRAME_THICK | LAYOUT_EXPLICIT | LIST_NORMAL;
-    //flags = FRAME_SUNKEN | FRAME_THICK | LAYOUT_EXPLICIT;
     sel = PickerDialog::ID_LIST;
     m_list = new FXList(this, this, sel, flags, 10, 10, 380, 340);
 
@@ -60,14 +59,14 @@ PickerDialog::PickerDialog(FXApp* app, FXWindow* parent, struct wtv_info* wtv) :
 /*****************************************************************************/
 PickerDialog::~PickerDialog()
 {
-    //LOGLN0((m_fi, LOG_INFO, LOGS, LOGP));
+    LOGLN0((m_wtv, LOG_INFO, LOGS, LOGP));
 }
 
 /*****************************************************************************/
 long
 PickerDialog::onPress(FXObject* obj, FXSelector sel, void* ptr)
 {
-    //LOGLN0((m_fi, LOG_INFO, LOGS, LOGP));
+    LOGLN0((m_wtv, LOG_INFO, LOGS, LOGP));
     if (obj == m_ok_but)
     {
         return onCmdAccept(obj, sel, ptr);
@@ -84,7 +83,7 @@ PickerDialog::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
     char filename[256];
     int index;
 
-    printf("PickerDialog::onStartupTimeout:\n");
+    LOGLN0((m_wtv, LOG_INFO, LOGS, LOGP));
     ldir = opendir("/tmp");
     index = -1;
     if (ldir != NULL)
@@ -116,6 +115,6 @@ PickerDialog::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
 long
 PickerDialog::onDoubleClicked(FXObject* obj, FXSelector sel, void* ptr)
 {
-    printf("PickerDialog::onDoubleClicked:\n");
+    LOGLN0((m_wtv, LOG_INFO, LOGS, LOGP));
     return onCmdAccept(obj, sel, ptr);
 }

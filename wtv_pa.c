@@ -435,8 +435,8 @@ wtv_pa_print_stats(void* handle)
     {
         if (self->pa_stream != NULL)
         {
-            pa_stream_get_latency(self->pa_stream, &latency, &negative);
-            printf("wtv_pa_print_stats: latency %ld negative %d\n", latency, negative);
+            //pa_stream_get_latency(self->pa_stream, &latency, &negative);
+            //printf("wtv_pa_print_stats: latency %ld negative %d\n", latency, negative);
         }
     }
     return 0;

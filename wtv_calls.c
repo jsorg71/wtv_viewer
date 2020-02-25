@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <dirent.h>
+#include <stdarg.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -65,7 +66,7 @@ wtv_check_audio(struct wtv_info* winfo)
     int bytes;
     int data_bytes_processed;
 
-    //printf("wtv_check_audio:\n");
+    LOGLN10((wtv, LOG_INFO, LOGS, LOGP));
     audio_s = winfo->audio_head;
     if (audio_s != NULL)
     {
@@ -125,8 +126,6 @@ wtv_process_msg_audio(struct wtv_info* winfo)
     {
         return 2;
     }
-    //printf("wtv_process_msg: audio data, pts %d dts %d "
-    //       "channels %d bytes %d\n", pts, dts, channels, bytes);wtv_sched_audio
     if (winfo->pa == NULL)
     {
         if (wtv_pa_init("wtv_viewer", &(winfo->pa)) != 0)
@@ -150,7 +149,6 @@ wtv_process_msg_audio(struct wtv_info* winfo)
     }
     if (winfo->pa != NULL)
     {
-#if 1
         if (winfo->audio_bytes < 32 * 1024)
         {
             audio_s = calloc(1, sizeof(struct stream));
@@ -176,21 +174,8 @@ wtv_process_msg_audio(struct wtv_info* winfo)
         }
         else
         {
-            printf("wtv_process_msg_audio: dropping audio data\n");
+            LOGLN0((winfo, LOG_INFO, LOGS "dropping audio data", LOGP));
         }
-        //printf("winfo->audio_bytes %d\n", winfo->audio_bytes);
-#else
-        //wtv_pa_play(winfo->pa, in_s->p, bytes);
-        if (wtv_pa_play_non_blocking(winfo->pa, in_s->p, bytes,
-                                     &data_bytes_processed) != 0)
-        {
-            printf("error\n");
-        }
-        if (data_bytes_processed != bytes)
-        {
-            printf("lost bytes\n");
-        }
-#endif
     }
     return 0;
 }
@@ -270,12 +255,10 @@ wtv_process_msg_video(struct wtv_info* winfo)
     in_uint32_le(in_s, fd_stride);
     in_uint32_le(in_s, fd_size);
     in_uint32_le(in_s, fd_bpp);
-    //printf("wtv_process_msg_video: fd %d fd_width %d fd_height %d "
-    //       "fd_stride %d fd_size %d fd_bpp %d\n",
-    //       fd, fd_width, fd_height, fd_stride, fd_size, fd_bpp);
-
+    LOGLN10((winfo, LOG_INFO, LOGS "fd %d fd_width %d fd_height %d "
+             "fd_stride %d fd_size %d fd_bpp %d", LOGP,
+             fd, fd_width, fd_height, fd_stride, fd_size, fd_bpp));
     rv = read_fd(winfo->sck, &fd);
-    //printf("rv %d fd %d\n", rv, fd);
     if (rv == 0)
     {
         wtv_fd_to_drawable(winfo, fd, fd_width, fd_height, fd_stride, fd_size, fd_bpp);
@@ -296,7 +279,7 @@ wtv_process_msg(struct wtv_info* winfo)
     in_s = winfo->in_s;
     in_uint32_le(in_s, code);
     in_uint8s(in_s, 4); /* bytes */
-    //printf("wtv_process_msg: code %d\n", code);
+    LOGLN10((winfo, LOG_INFO, LOGS "code %d", LOGP, code));
     switch (code)
     {
         case 2:
@@ -306,7 +289,7 @@ wtv_process_msg(struct wtv_info* winfo)
             rv = wtv_process_msg_video(winfo);
             break;
         default:
-            printf("wtv_process_msg: unknown code %d\n", code);
+            LOGLN0((winfo, LOG_ERROR, LOGS "unknown code %d", LOGP, code));
             break;
     }
     return rv;
@@ -331,7 +314,7 @@ get_filename(char* filename, int bytes)
             {
                 if (entry->d_type == DT_SOCK)
                 {
-                    snprintf(filename, bytes, "/tmp/%s", entry->d_name);
+                    wtv_snprintf(filename, bytes, "/tmp/%s", entry->d_name);
                     count++;
                 }
             }
@@ -348,7 +331,7 @@ get_filename(char* filename, int bytes)
 
 /*****************************************************************************/
 int
-wtv_connect_to_uds(const char* filename)
+wtv_connect_to_uds(struct wtv_info* winfo, const char* filename)
 {
     struct sockaddr_un s;
     int sck;
@@ -362,7 +345,7 @@ wtv_connect_to_uds(const char* filename)
     {
         return -1;
     }
-    printf("wtv_connect_to_uds: connecting to %s\n", filename);
+    LOGLN0((winfo, LOG_INFO, LOGS "connecting to %s", LOGP, filename));
     sck = socket(PF_LOCAL, SOCK_STREAM, 0);
     if (sck == -1)
     {
@@ -395,7 +378,7 @@ wtv_start(struct wtv_info* winfo)
     out_s->end = out_s->p;
     if (wtv_out_stream(winfo, out_s) != 0)
     {
-        printf("wtv_start: wtv_out_stream failed\n");
+        LOGLN0((winfo, LOG_ERROR, LOGS "wtv_out_stream failed", LOGP));
     }
     free(out_s->data);
     free(out_s);
@@ -416,7 +399,7 @@ wtv_request_frame(struct wtv_info* winfo)
     out_s->end = out_s->p;
     if (wtv_out_stream(winfo, out_s) != 0)
     {
-        printf("wtv_request_frame: wtv_out_stream failed\n");
+        LOGLN0((winfo, LOG_ERROR, LOGS "wtv_out_stream failed", LOGP));
     }
     free(out_s->data);
     free(out_s);
@@ -427,33 +410,29 @@ wtv_request_frame(struct wtv_info* winfo)
 int
 wtv_read(struct wtv_info* winfo)
 {
-    //char mybuf[1024];
     int rv;
     int toread;
-    //int code;
     int bytes;
     int sck;
 
     sck = winfo->sck;
-
-    //printf("wtv_read:\n");
+    LOGLN10((winfo, LOG_INFO, LOGS, LOGP));
     if (winfo->in_s == NULL)
     {
-        //printf("wtv_read: 1\n");
         winfo->in_s = (struct stream*)calloc(1, sizeof(struct stream));
         winfo->in_s->data = (char*)malloc(1024 * 1024);
         winfo->in_s->p = winfo->in_s->data;
         winfo->in_s->end = winfo->in_s->data + 8;
     }
     toread = winfo->in_s->end - winfo->in_s->p;
-    //printf("toread %d\n", toread);
+    LOGLN10((winfo, LOG_INFO, LOGS "toread %d", LOGP, toread));
     rv = recv(sck, winfo->in_s->p, toread, 0);
     if (rv < 1)
     {
         return 1;
     }
     winfo->in_s->p += rv;
-    //printf("wtv_read: recv rv %d\n", rv);
+    LOGLN10((winfo, LOG_INFO, LOGS "recv rv %d", LOGP, rv));
     if (winfo->in_s->p == winfo->in_s->end)
     {
         if (winfo->in_s->p == winfo->in_s->data + 8)
@@ -463,7 +442,7 @@ wtv_read(struct wtv_info* winfo)
             in_uint32_le(winfo->in_s, bytes);
             if ((bytes < 8) || (bytes > 1024 * 1024))
             {
-                printf("wtv_read: bad bytes %d\n", bytes);
+                LOGLN0((winfo, LOG_ERROR, LOGS "bad bytes %d", LOGP, bytes));
                 return 1;
             }
             winfo->in_s->end = winfo->in_s->data + bytes;
@@ -472,7 +451,7 @@ wtv_read(struct wtv_info* winfo)
     rv = 0;
     if (winfo->in_s->p == winfo->in_s->end)
     {
-        //printf("got all\n");
+        LOGLN10((winfo, LOG_INFO, LOGS "got all", LOGP));
         winfo->in_s->p = winfo->in_s->data;
         rv = wtv_process_msg(winfo);
         winfo->in_s->p = winfo->in_s->data;
@@ -491,8 +470,7 @@ wtv_write(struct wtv_info* winfo)
     int sck;
 
     sck = winfo->sck;
-
-    //printf("wtv_write:\n");
+    LOGLN10((winfo, LOG_INFO, LOGS, LOGP));
     out_s = winfo->out_s_head;
     if (out_s != NULL)
     {
@@ -551,7 +529,74 @@ int
 wtv_print_stats(struct wtv_info* winfo)
 {
     wtv_pa_print_stats(winfo->pa);
-    printf("wtv_print_stats: audio_bytes %d\n", winfo->audio_bytes);
+    LOGLN0((winfo, LOG_INFO, LOGS "audio_bytes %d", LOGP, winfo->audio_bytes));
     return 0;
 }
 
+static int g_log_level = 4;
+
+static const char g_log_pre[][8] =
+{
+    "ERROR",
+    "WARN",
+    "INFO",
+    "DEBUG"
+};
+
+/*****************************************************************************/
+int
+wtv_snprintf(char* buffer, size_t count, const char *format, ...)
+{
+    va_list ap;
+    int rv;
+
+    va_start(ap, format);
+#if defined(_MSC_VER)
+    rv = _vsnprintf_s(buffer, count, count, format, ap);
+#else
+    rv = vsnprintf(buffer, count, format, ap);
+#endif
+    va_end(ap);
+    return rv;
+}
+
+/*****************************************************************************/
+int
+wtv_vsnprintf(char* buffer, size_t count, const char *format, va_list ap)
+{
+    int rv;
+
+#if defined(_MSC_VER)
+    rv = _vsnprintf_s(buffer, count, count, format, ap);
+#else
+    rv = vsnprintf(buffer, count, format, ap);
+#endif
+    return rv;
+}
+
+/*****************************************************************************/
+int
+logln(struct wtv_info* winfo, int log_level, const char* format, ...)
+{
+    va_list ap;
+    char* log_line;
+    int mstime;
+
+    if (winfo == NULL)
+    {
+        return 0;
+    }
+    if (log_level < g_log_level)
+    {
+        log_line = (char*)malloc(2048);
+        va_start(ap, format);
+        wtv_vsnprintf(log_line, 1024, format, ap);
+        va_end(ap);
+        get_mstime(&mstime);
+        wtv_snprintf(log_line + 1024, 1024, "[%10.10u][%s]%s",
+                     mstime, g_log_pre[log_level % 4], log_line);
+        wtv_writeln(winfo, log_line + 1024);
+        free(log_line);
+    }
+    return 0;
+}
