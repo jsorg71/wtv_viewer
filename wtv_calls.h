@@ -17,6 +17,8 @@ struct wtv_info
     int drawable_width;
     int drawable_height;
     int pict_format_default;
+    int gc;
+    int bs_pixmap;
     void* xcb;
 };
 
