@@ -158,6 +158,7 @@ GUIObject::onResizeTimeout(FXObject* obj, FXSelector sel, void* ptr)
         m_wtv->drawable_height = m_height = height;
         delete m_image;
         m_image = new FXImage(m_app, NULL, 0, m_width, m_height);
+        m_wtv->bs_pixmap = m_image->id();
     }
     return 1;
 }
@@ -360,6 +361,8 @@ gui_create(int argc, char** argv, struct wtv_info** wtv)
     (*wtv)->pict_format_default =
             find_format_for_visual(formats, screen->root_visual);
     free(formats);
+    (*wtv)->gc = xcb_generate_id(xcb);
+    xcb_create_gc(xcb, (*wtv)->gc, (*wtv)->drawable, 0, NULL);
     return 0;
 }
 
