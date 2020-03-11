@@ -25,6 +25,12 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
     xcb_render_transform_t trans;
     float xscale;
     float yscale;
+    int dst_width;
+    int dst_height;
+    int ratio;
+    int x;
+    int y;
+    xcb_rectangle_t rectangles[1];
 
     (void)fd_bpp;
 
@@ -38,11 +44,50 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
     src_picture = xcb_generate_id(xcb);
     xcb_render_create_picture(xcb, src_picture, pixmap,
                               wtv->pict_format_default, 0, NULL);
+    ratio = (fd_width << 16) / fd_height;
+    dst_height = wtv->drawable_height;
+    dst_width = (dst_height * ratio + 32768) >> 16;
+    if (dst_width > wtv->drawable_width)
+    {
+        ratio = (fd_height << 16) / fd_width;
+        dst_width = wtv->drawable_width;
+        dst_height = (wtv->drawable_width * ratio + 32768) >> 16;
+    }
+    x = 0;
+    if (dst_width < wtv->drawable_width)
+    {
+        x = (wtv->drawable_width - dst_width) / 2;
+        rectangles[0].x = 0;
+        rectangles[0].y = 0;
+        rectangles[0].width = x;
+        rectangles[0].height = wtv->drawable_height;
+        xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 1, rectangles);
+        rectangles[0].x = x + dst_width;
+        rectangles[0].y = 0;
+        rectangles[0].width = x + 1;
+        rectangles[0].height = wtv->drawable_height;
+        xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 1, rectangles);
+    }
+    y = 0;
+    if (dst_height < wtv->drawable_height)
+    {
+        y = (wtv->drawable_height - dst_height) / 2;
+        rectangles[0].x = 0;
+        rectangles[0].y = 0;
+        rectangles[0].width = wtv->drawable_width;
+        rectangles[0].height = y;
+        xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 1, rectangles);
+        rectangles[0].x = 0;
+        rectangles[0].y = y + dst_height;
+        rectangles[0].width = wtv->drawable_width;
+        rectangles[0].height = y + 1;
+        xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 1, rectangles);
+    }
     memset(&trans, 0, sizeof(trans));
     xscale = fd_width;
-    xscale /= wtv->drawable_width;
+    xscale /= dst_width;
     yscale = fd_height;
-    yscale /= wtv->drawable_height;
+    yscale /= dst_height;
     trans.matrix11 = ToFixed(xscale);
     trans.matrix22 = ToFixed(yscale);
     trans.matrix33 = ToFixed(1);
@@ -52,8 +97,8 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
                               wtv->pict_format_default, 0, NULL);
     xcb_render_composite(xcb, XCB_RENDER_PICT_OP_SRC,
                          src_picture, XCB_RENDER_PICTURE_NONE, dst_picture,
-                         0, 0, 0, 0, 0, 0,
-                         wtv->drawable_width, wtv->drawable_height);
+                         0, 0, 0, 0, x, y,
+                         dst_width, dst_height);
     xcb_render_free_picture(xcb, src_picture);
     xcb_render_free_picture(xcb, dst_picture);
     xcb_free_pixmap(xcb, pixmap);
