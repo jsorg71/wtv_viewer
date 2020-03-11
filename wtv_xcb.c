@@ -30,7 +30,7 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
     int ratio;
     int x;
     int y;
-    xcb_rectangle_t rectangles[1];
+    xcb_rectangle_t rectangles[2];
 
     (void)fd_bpp;
 
@@ -57,31 +57,25 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
     if (dst_width < wtv->drawable_width)
     {
         x = (wtv->drawable_width - dst_width) / 2;
-        rectangles[0].x = 0;
-        rectangles[0].y = 0;
+        memset(rectangles, 0, sizeof(rectangles));
         rectangles[0].width = x;
         rectangles[0].height = wtv->drawable_height;
-        xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 1, rectangles);
-        rectangles[0].x = x + dst_width;
-        rectangles[0].y = 0;
-        rectangles[0].width = x + 1;
-        rectangles[0].height = wtv->drawable_height;
-        xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 1, rectangles);
+        rectangles[1].x = x + dst_width;
+        rectangles[1].width = x + 1;
+        rectangles[1].height = wtv->drawable_height;
+        xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 2, rectangles);
     }
     y = 0;
     if (dst_height < wtv->drawable_height)
     {
         y = (wtv->drawable_height - dst_height) / 2;
-        rectangles[0].x = 0;
-        rectangles[0].y = 0;
+        memset(rectangles, 0, sizeof(rectangles));
         rectangles[0].width = wtv->drawable_width;
         rectangles[0].height = y;
-        xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 1, rectangles);
-        rectangles[0].x = 0;
-        rectangles[0].y = y + dst_height;
-        rectangles[0].width = wtv->drawable_width;
-        rectangles[0].height = y + 1;
-        xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 1, rectangles);
+        rectangles[1].y = y + dst_height;
+        rectangles[1].width = wtv->drawable_width;
+        rectangles[1].height = y + 1;
+        xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 2, rectangles);
     }
     memset(&trans, 0, sizeof(trans));
     xscale = fd_width;
@@ -97,8 +91,7 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
                               wtv->pict_format_default, 0, NULL);
     xcb_render_composite(xcb, XCB_RENDER_PICT_OP_SRC,
                          src_picture, XCB_RENDER_PICTURE_NONE, dst_picture,
-                         0, 0, 0, 0, x, y,
-                         dst_width, dst_height);
+                         0, 0, 0, 0, x, y, dst_width, dst_height);
     xcb_render_free_picture(xcb, src_picture);
     xcb_render_free_picture(xcb, dst_picture);
     xcb_free_pixmap(xcb, pixmap);
