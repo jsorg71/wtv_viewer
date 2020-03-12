@@ -23,6 +23,7 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
     xcb_render_picture_t src_picture;
     xcb_render_picture_t dst_picture;
     xcb_render_transform_t trans;
+    xcb_rectangle_t rectangles[2];
     float xscale;
     float yscale;
     int dst_width;
@@ -30,7 +31,6 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
     int ratio;
     int x;
     int y;
-    xcb_rectangle_t rectangles[2];
 
     (void)fd_bpp;
 
@@ -46,17 +46,18 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
                               wtv->pict_format_default, 0, NULL);
     ratio = (fd_width << 16) / fd_height;
     dst_height = wtv->drawable_height;
-    dst_width = (dst_height * ratio + 32768) >> 16;
+    dst_width = (dst_height * ratio + 0x8000) >> 16;
     if (dst_width > wtv->drawable_width)
     {
         ratio = (fd_height << 16) / fd_width;
         dst_width = wtv->drawable_width;
-        dst_height = (wtv->drawable_width * ratio + 32768) >> 16;
+        dst_height = (dst_width * ratio + 0x8000) >> 16;
     }
     x = 0;
     if (dst_width < wtv->drawable_width)
     {
         x = (wtv->drawable_width - dst_width) / 2;
+        /* fill any extra on left and right */
         memset(rectangles, 0, sizeof(rectangles));
         rectangles[0].width = x;
         rectangles[0].height = wtv->drawable_height;
@@ -69,6 +70,7 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
     if (dst_height < wtv->drawable_height)
     {
         y = (wtv->drawable_height - dst_height) / 2;
+        /* fill any extra on top and bottom */
         memset(rectangles, 0, sizeof(rectangles));
         rectangles[0].width = wtv->drawable_width;
         rectangles[0].height = y;
