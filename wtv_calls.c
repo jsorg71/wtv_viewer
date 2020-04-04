@@ -142,7 +142,8 @@ wtv_process_msg_audio(struct wtv_info* winfo)
                 format = CAP_PA_FORMAT_48000_2CH_16LE;
                 break;
         }
-        if (wtv_pa_start(winfo->pa, "wtv_viewer", 1000, format) != 0)
+        if (wtv_pa_start(winfo->pa, "wtv_viewer", winfo->ms_latency,
+                         format) != 0)
         {
             return 4;
         }
@@ -269,6 +270,28 @@ wtv_process_msg_video(struct wtv_info* winfo)
 
 /*****************************************************************************/
 static int
+wtv_process_msg_version(struct wtv_info* winfo)
+{
+    int version_major;
+    int version_minor;
+    struct stream* in_s;
+
+    in_s = winfo->in_s;
+    if (!s_check_rem(in_s, 12))
+    {
+        return 1;
+    }
+    in_uint32_le(in_s, version_major);
+    in_uint32_le(in_s, version_minor);
+    in_uint32_le(in_s, winfo->ms_latency);
+    LOGLN0((winfo, LOG_INFO, LOGS "version_major %d version_minor %d "
+            "latency %d", LOGP, version_major, version_minor,
+            winfo->ms_latency));
+    return 0;
+}
+
+/*****************************************************************************/
+static int
 wtv_process_msg(struct wtv_info* winfo)
 {
     int code;
@@ -287,6 +310,9 @@ wtv_process_msg(struct wtv_info* winfo)
             break;
         case 4:
             rv = wtv_process_msg_video(winfo);
+            break;
+        case 5:
+            rv = wtv_process_msg_version(winfo);
             break;
         default:
             LOGLN0((winfo, LOG_ERROR, LOGS "unknown code %d", LOGP, code));

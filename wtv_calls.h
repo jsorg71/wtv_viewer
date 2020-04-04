@@ -19,6 +19,8 @@ struct wtv_info
     int pict_format_default;
     int gc;
     int bs_pixmap;
+    int ms_latency;
+    int pad0;
     void* xcb;
 };
 
