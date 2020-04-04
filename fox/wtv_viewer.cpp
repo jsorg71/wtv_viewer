@@ -128,7 +128,7 @@ int GUIObject::checkWrite()
 int GUIObject::schedAudio()
 {
     LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
-    m_app->addTimeout(this, GUIObject::ID_AUDIO, 33, NULL);
+    m_app->addTimeout(this, GUIObject::ID_AUDIO, 16, NULL);
     return 0;
 }
 

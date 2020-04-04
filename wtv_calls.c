@@ -67,13 +67,23 @@ wtv_check_audio(struct wtv_info* winfo)
     int data_bytes_processed;
 
     LOGLN10((wtv, LOG_INFO, LOGS, LOGP));
-    audio_s = winfo->audio_head;
-    if (audio_s != NULL)
+    for (;;)
     {
+        audio_s = winfo->audio_head;
+        if (audio_s == NULL)
+        {
+            break;
+        }
         bytes = audio_s->end - audio_s->p;
         if (wtv_pa_play_non_blocking(winfo->pa, audio_s->p, bytes,
                                      &data_bytes_processed) == 0)
         {
+            LOGLN10((winfo, LOG_INFO, LOGS "data_bytes_processed %d", LOGP,
+                     data_bytes_processed));
+            if (data_bytes_processed < 1)
+            {
+                break;
+            }
             audio_s->p += data_bytes_processed;
             if (audio_s->p >= audio_s->end)
             {
@@ -90,6 +100,10 @@ wtv_check_audio(struct wtv_info* winfo)
                 free(audio_s);
             }
             winfo->audio_bytes -= data_bytes_processed;
+        }
+        else
+        {
+            break;
         }
     }
     if (winfo->audio_head != NULL)

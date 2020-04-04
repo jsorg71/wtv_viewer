@@ -239,7 +239,8 @@ wtv_pa_start(void* handle, const char* name, int ms_latency, int format)
         buffer_attr.maxlength =
             pa_usec_to_bytes(ms_latency * sample_spec.channels * 1000,
                              &sample_spec);
-        buffer_attr.tlength = pa_usec_to_bytes(ms_latency * 1000, &sample_spec);
+        buffer_attr.tlength = pa_usec_to_bytes(ms_latency * 1000,
+                                               &sample_spec);
         buffer_attr.prebuf = (uint32_t) -1;
         buffer_attr.minreq = (uint32_t) -1;
         buffer_attr.fragsize = (uint32_t) -1;
