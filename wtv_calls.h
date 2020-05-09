@@ -14,6 +14,8 @@ struct wtv_info
     int audio_bytes;
     int sck;
     int drawable;
+    int drawable_x;
+    int drawable_y;
     int drawable_width;
     int drawable_height;
     int pict_format_default;

@@ -53,30 +53,36 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
         dst_width = wtv->drawable_width;
         dst_height = (dst_width * ratio + 0x8000) >> 16;
     }
-    x = 0;
+    x = wtv->drawable_x;
     if (dst_width < wtv->drawable_width)
     {
-        x = (wtv->drawable_width - dst_width) / 2;
+        x += (wtv->drawable_width - dst_width) / 2;
         /* fill any extra on left and right */
         memset(rectangles, 0, sizeof(rectangles));
-        rectangles[0].width = x;
+        rectangles[0].x = wtv->drawable_x;
+        rectangles[0].y = wtv->drawable_y;
+        rectangles[0].width = x - wtv->drawable_x;
         rectangles[0].height = wtv->drawable_height;
         rectangles[1].x = x + dst_width;
-        rectangles[1].width = x + 1;
+        rectangles[1].y = wtv->drawable_y;
+        rectangles[1].width = x - wtv->drawable_x;
         rectangles[1].height = wtv->drawable_height;
         xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 2, rectangles);
     }
-    y = 0;
+    y = wtv->drawable_y;
     if (dst_height < wtv->drawable_height)
     {
-        y = (wtv->drawable_height - dst_height) / 2;
+        y += (wtv->drawable_height - dst_height) / 2;
         /* fill any extra on top and bottom */
         memset(rectangles, 0, sizeof(rectangles));
+        rectangles[0].x = wtv->drawable_x;
+        rectangles[0].y = wtv->drawable_y;
         rectangles[0].width = wtv->drawable_width;
-        rectangles[0].height = y;
+        rectangles[0].height = y - wtv->drawable_y;
+        rectangles[1].x = wtv->drawable_x;
         rectangles[1].y = y + dst_height;
         rectangles[1].width = wtv->drawable_width;
-        rectangles[1].height = y + 1;
+        rectangles[1].height = y - wtv->drawable_y;
         xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 2, rectangles);
     }
     memset(&trans, 0, sizeof(trans));

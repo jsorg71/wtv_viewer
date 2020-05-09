@@ -35,6 +35,13 @@ public:
     FXApp* m_app;
     FXMainWindow* m_mw;
     FXImage* m_image;
+    FXDockSite* m_topdock;
+    FXToolBarShell* m_tbs;
+    FXMenuBar* m_mb;
+    FXMenuPane* m_filemenu;
+    FXMenuPane* m_helpmenu;
+    int m_x;
+    int m_y;
     int m_width;
     int m_height;
     int m_cap_mstime;
@@ -57,6 +64,9 @@ public:
         ID_AUDIO,
         ID_STATS,
         ID_STARTUP,
+        ID_EXIT,
+        ID_HELP,
+        ID_ABOUT,
         ID_LAST
     };
 };
@@ -76,11 +86,33 @@ GUIObject::GUIObject():FXObject()
 /*****************************************************************************/
 GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
 {
+    FXuint flags;
+    FXSelector sel;
+    FXCursor* cur;
+
     m_wtv = wtv;
     m_app = new FXApp("wtv_viewer", "wtv_viewer");
     m_mw = new FXMainWindow(m_app, "wtv_viewer", NULL, NULL, DECOR_ALL,
                             0, 0, 640, 480);
+    cur = new FXCursor(m_app, FX::CURSOR_ARROW);
+    m_app->setDefaultCursor(DEF_RARROW_CURSOR, cur);
     m_app->init(argc, argv);
+    flags = LAYOUT_SIDE_TOP | LAYOUT_FILL_X;
+    m_topdock = new FXDockSite(m_mw, flags);
+    flags = FRAME_RAISED;
+    m_tbs = new FXToolBarShell(m_mw, flags);
+    flags = LAYOUT_DOCK_NEXT | LAYOUT_SIDE_TOP | LAYOUT_FILL_X | FRAME_RAISED;
+    m_mb = new FXMenuBar(m_topdock, m_tbs, flags);
+    m_filemenu = new FXMenuPane(m_mw);
+    new FXMenuTitle(m_mb, "&File", NULL, m_filemenu);
+    sel = GUIObject::ID_EXIT;
+    new FXMenuCommand(m_filemenu, "&Exit\t\tExit the application.", NULL, this, sel);
+    m_helpmenu = new FXMenuPane(m_mw);
+    new FXMenuTitle(m_mb, "&Help", NULL, m_helpmenu);
+    sel = GUIObject::ID_HELP;
+    new FXMenuCommand(m_helpmenu, "&Help...\t\tDisplay help information.", NULL, this, sel);
+    sel = GUIObject::ID_ABOUT;
+    new FXMenuCommand(m_helpmenu, "&About\t\tDisplay version information.", NULL, this, sel);
     m_app->create();
     m_mw->show(PLACEMENT_SCREEN);
     m_mw->setTarget(this);
@@ -145,15 +177,23 @@ GUIObject::onConfigure(FXObject* obj, FXSelector sel, void* ptr)
 long
 GUIObject::onResizeTimeout(FXObject* obj, FXSelector sel, void* ptr)
 {
+    int x;
+    int y;
     int width;
     int height;
 
     LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
-    width = m_mw->getWidth();
-    height = m_mw->getHeight();
-    if ((width != m_width) || (height != m_height))
+    x = 2;
+    y = m_mb->getHeight() + 2;
+    width = m_mw->getWidth() - x - 2;
+    height = m_mw->getHeight() - y - 2;
+    if ((x != m_x) || (y != m_y) ||
+        (width != m_width) || (height != m_height))
     {
-        LOGLN0((m_wtv, LOG_INFO, LOGS "resize to %dx%d", LOGP, width, height));
+        LOGLN0((m_wtv, LOG_INFO, LOGS "resize to %dx%dx%dx%d",
+                LOGP, x, y, width, height));
+        m_wtv->drawable_x = m_x = x;
+        m_wtv->drawable_y = m_y = y;
         m_wtv->drawable_width = m_width = width;
         m_wtv->drawable_height = m_height = height;
         delete m_image;
