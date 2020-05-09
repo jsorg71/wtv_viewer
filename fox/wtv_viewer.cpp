@@ -286,6 +286,7 @@ GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
         m_app->exit();
         return 1;
     }
+    m_mw->setTitle(str + " - wtv_viewer");
     wtv_start(m_wtv);
     ih = (FXInputHandle)(m_wtv->sck);
     m_app->addInput(ih, INPUT_READ, this, GUIObject::ID_SOCKET);
