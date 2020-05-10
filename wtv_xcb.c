@@ -29,14 +29,19 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
     int dst_width;
     int dst_height;
     int ratio;
-    int x;
-    int y;
+    int dst_x;
+    int dst_y;
 
     (void)fd_bpp;
 
+    LOGLN10((wtv, LOG_INFO, LOGS "bs_pixmap %d", LOGP, wtv->bs_pixmap));
+    if (wtv->bs_pixmap == 0)
+    {
+        return 1;
+    }
     xcb = (xcb_connection_t*)(wtv->xcb);
     pixmap = xcb_generate_id(xcb);
-    cookie = xcb_dri3_pixmap_from_buffer(xcb, pixmap, wtv->drawable,
+    cookie = xcb_dri3_pixmap_from_buffer(xcb, pixmap, wtv->bs_pixmap,
                                          fd_size, fd_width, fd_height,
                                          fd_stride, 24, 32, fd);
     xcb_error = xcb_request_check(xcb, cookie);
@@ -45,45 +50,39 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
     xcb_render_create_picture(xcb, src_picture, pixmap,
                               wtv->pict_format_default, 0, NULL);
     ratio = (fd_width << 16) / fd_height;
-    dst_height = wtv->drawable_height;
+    dst_height = wtv->bs_pixmap_height;
     dst_width = (dst_height * ratio + 0x8000) >> 16;
-    if (dst_width > wtv->drawable_width)
+    if (dst_width > wtv->bs_pixmap_width)
     {
         ratio = (fd_height << 16) / fd_width;
-        dst_width = wtv->drawable_width;
+        dst_width = wtv->bs_pixmap_width;
         dst_height = (dst_width * ratio + 0x8000) >> 16;
     }
-    x = wtv->drawable_x;
-    if (dst_width < wtv->drawable_width)
+    dst_x = 0;
+    if (dst_width < wtv->bs_pixmap_width)
     {
-        x += (wtv->drawable_width - dst_width) / 2;
+        dst_x += (wtv->bs_pixmap_width - dst_width) / 2;
         /* fill any extra on left and right */
         memset(rectangles, 0, sizeof(rectangles));
-        rectangles[0].x = wtv->drawable_x;
-        rectangles[0].y = wtv->drawable_y;
-        rectangles[0].width = x - wtv->drawable_x;
-        rectangles[0].height = wtv->drawable_height;
-        rectangles[1].x = x + dst_width;
-        rectangles[1].y = wtv->drawable_y;
-        rectangles[1].width = x - wtv->drawable_x;
-        rectangles[1].height = wtv->drawable_height;
-        xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 2, rectangles);
+        rectangles[0].width = dst_x;
+        rectangles[0].height = wtv->bs_pixmap_height;
+        rectangles[1].x = dst_x + dst_width;
+        rectangles[1].width = dst_x;
+        rectangles[1].height = wtv->bs_pixmap_height;
+        xcb_poly_fill_rectangle(xcb, wtv->bs_pixmap, wtv->gc, 2, rectangles);
     }
-    y = wtv->drawable_y;
-    if (dst_height < wtv->drawable_height)
+    dst_y = 0;
+    if (dst_height < wtv->bs_pixmap_height)
     {
-        y += (wtv->drawable_height - dst_height) / 2;
+        dst_y += (wtv->bs_pixmap_height - dst_height) / 2;
         /* fill any extra on top and bottom */
         memset(rectangles, 0, sizeof(rectangles));
-        rectangles[0].x = wtv->drawable_x;
-        rectangles[0].y = wtv->drawable_y;
-        rectangles[0].width = wtv->drawable_width;
-        rectangles[0].height = y - wtv->drawable_y;
-        rectangles[1].x = wtv->drawable_x;
-        rectangles[1].y = y + dst_height;
-        rectangles[1].width = wtv->drawable_width;
-        rectangles[1].height = y - wtv->drawable_y;
-        xcb_poly_fill_rectangle(xcb, wtv->drawable, wtv->gc, 2, rectangles);
+        rectangles[0].width = wtv->bs_pixmap_width;
+        rectangles[0].height = dst_y;
+        rectangles[1].y = dst_y + dst_height;
+        rectangles[1].width = wtv->bs_pixmap_width;
+        rectangles[1].height = dst_y;
+        xcb_poly_fill_rectangle(xcb, wtv->bs_pixmap, wtv->gc, 2, rectangles);
     }
     memset(&trans, 0, sizeof(trans));
     xscale = fd_width;
@@ -95,13 +94,14 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
     trans.matrix33 = ToFixed(1);
     xcb_render_set_picture_transform(xcb, src_picture, trans);
     dst_picture = xcb_generate_id(xcb);
-    xcb_render_create_picture(xcb, dst_picture, wtv->drawable,
+    xcb_render_create_picture(xcb, dst_picture, wtv->bs_pixmap,
                               wtv->pict_format_default, 0, NULL);
     xcb_render_composite(xcb, XCB_RENDER_PICT_OP_SRC,
                          src_picture, XCB_RENDER_PICTURE_NONE, dst_picture,
-                         0, 0, 0, 0, x, y, dst_width, dst_height);
+                         0, 0, 0, 0, dst_x, dst_y, dst_width, dst_height);
     xcb_render_free_picture(xcb, src_picture);
     xcb_render_free_picture(xcb, dst_picture);
     xcb_free_pixmap(xcb, pixmap);
+    wtv_invalidate(wtv, 0, 0, wtv->bs_pixmap_width, wtv->bs_pixmap_height);
     return 0;
 }

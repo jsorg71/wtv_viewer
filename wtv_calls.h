@@ -13,14 +13,11 @@ struct wtv_info
     struct stream* audio_tail;
     int audio_bytes;
     int sck;
-    int drawable;
-    int drawable_x;
-    int drawable_y;
-    int drawable_width;
-    int drawable_height;
     int pict_format_default;
     int gc;
     int bs_pixmap;
+    int bs_pixmap_width;
+    int bs_pixmap_height;
     int ms_latency;
     int pad0;
     void* xcb;
@@ -60,6 +57,8 @@ int
 wtv_sched_audio(struct wtv_info* winfo);
 int
 wtv_writeln(struct wtv_info* winfo, const char* msg);
+int
+wtv_invalidate(struct wtv_info* winfo, int x, int y, int width, int height);
 
 #define LOG_ERROR 0
 #define LOG_WARN  1

@@ -20,6 +20,130 @@
 
 #define FRAME_MSTIME 33
 
+class FXMyMainWindow:public FXMainWindow
+{
+    FXDECLARE(FXMyMainWindow)
+public:
+    FXMyMainWindow();
+    FXMyMainWindow(FXApp* app);
+    virtual ~FXMyMainWindow();
+public:
+    struct wtv_info* m_wtv;
+    FXApp* m_app;
+    FXImage* m_image;
+    int m_image_width;
+    int m_image_height;
+    int m_left_offset;
+    int m_top_offset;
+    int m_right_offset;
+    int m_bottom_offset;
+public:
+    long onConfigure(FXObject* obj, FXSelector sel, void* ptr);
+    long onPaint(FXObject* obj, FXSelector sel, void* ptr);
+};
+
+/*****************************************************************************/
+FXMyMainWindow::FXMyMainWindow()
+{
+    m_app = NULL;
+    m_image = NULL;
+    m_image_width = 0;
+    m_image_height = 0;
+    m_left_offset = 0;
+    m_top_offset = 0;
+    m_right_offset = 0;
+    m_bottom_offset = 0;
+}
+
+/*****************************************************************************/
+FXMyMainWindow::FXMyMainWindow(FXApp* app):
+                FXMainWindow(app, "wtv_viewer", NULL, NULL, DECOR_ALL,
+                             0, 0, 640, 480)
+{
+    m_app = app;
+    m_image = NULL;
+    m_image_width = 0;
+    m_image_height = 0;
+    m_left_offset = 0;
+    m_top_offset = 0;
+    m_right_offset = 0;
+    m_bottom_offset = 0;
+}
+
+/*****************************************************************************/
+FXMyMainWindow::~FXMyMainWindow()
+{
+    delete m_image;
+}
+
+/*****************************************************************************/
+long
+FXMyMainWindow::onConfigure(FXObject* obj, FXSelector sel, void* ptr)
+{
+    int width;
+    int height;
+
+    FXMainWindow::onConfigure(obj, sel, ptr);
+    width = getWidth() - m_left_offset - m_right_offset;
+    height = getHeight() - m_top_offset - m_bottom_offset;
+    if ((width != m_image_width) || (height != m_image_height))
+    {
+        m_image_width = width;
+        m_image_height = height;
+        delete m_image;
+        m_image = new FXImage(m_app, NULL, 0, m_image_width, m_image_height);
+        m_image->create();
+        FXDCWindow dc(m_image);
+        dc.fillRectangle(0, 0, m_image_width, m_image_height);
+        if (m_wtv != NULL)
+        {
+            m_wtv->bs_pixmap = m_image->id();
+            m_wtv->bs_pixmap_width = m_image_width;
+            m_wtv->bs_pixmap_height = m_image_height;
+        }
+    }
+    return 1;
+}
+
+/*****************************************************************************/
+long
+FXMyMainWindow::onPaint(FXObject* obj, FXSelector sel, void* ptr)
+{
+    FXEvent* evt = (FXEvent*)ptr;
+    FXRegion reg(evt->rect.x, evt->rect.y, evt->rect.w, evt->rect.h);
+    if (!reg.empty())
+    {
+        int width = getWidth();
+        int height = getHeight();
+        FXDCWindow dc(this);
+        if (m_image != NULL)
+        {
+            dc.setClipRegion(reg);
+            FXRegion image_reg(m_left_offset, m_top_offset,
+                               width - m_left_offset - m_right_offset,
+                               height - m_top_offset - m_bottom_offset);
+            reg -= image_reg;
+            dc.drawImage(m_image, m_left_offset, m_top_offset);
+        }
+        if (!reg.empty())
+        {
+            dc.setClipRegion(reg);
+            dc.setForeground(backColor);
+            dc.fillRectangle(0, 0, width, height);
+        }
+    }
+    return 1;
+}
+
+FXDEFMAP(FXMyMainWindow) FXMyMainWindowMap[] =
+{
+    FXMAPFUNC(SEL_CONFIGURE, 0, FXMyMainWindow::onConfigure),
+    FXMAPFUNC(SEL_PAINT, 0, FXMyMainWindow::onPaint)
+};
+
+FXIMPLEMENT(FXMyMainWindow, FXMainWindow, FXMyMainWindowMap,
+            ARRAYNUMBER(FXMyMainWindowMap))
+
 class GUIObject:public FXObject
 {
     FXDECLARE(GUIObject)
@@ -30,10 +154,11 @@ public:
     int mainLoop();
     int checkWrite();
     int schedAudio();
+    int invalidate(int x, int y, int width, int height);
 public:
     struct wtv_info* m_wtv;
     FXApp* m_app;
-    FXMainWindow* m_mw;
+    FXMyMainWindow* m_mw;
     FXImage* m_image;
     FXDockSite* m_topdock;
     FXToolBarShell* m_tbs;
@@ -46,10 +171,6 @@ public:
     int m_height;
     int m_cap_mstime;
 public:
-    long onConfigure(FXObject* obj, FXSelector sel, void* ptr);
-    long onResizeTimeout(FXObject* obj, FXSelector sel, void* ptr);
-    long onPaint(FXObject* obj, FXSelector sel, void* ptr);
-    long onUpdate(FXObject* obj, FXSelector sel, void* ptr);
     long onEventRead(FXObject* obj, FXSelector sel, void* ptr);
     long onEventWrite(FXObject* obj, FXSelector sel, void* ptr);
     long onFrameTimeout(FXObject* obj, FXSelector sel, void* ptr);
@@ -92,8 +213,8 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
 
     m_wtv = wtv;
     m_app = new FXApp("wtv_viewer", "wtv_viewer");
-    m_mw = new FXMainWindow(m_app, "wtv_viewer", NULL, NULL, DECOR_ALL,
-                            0, 0, 640, 480);
+    m_mw = new FXMyMainWindow(m_app);
+    m_mw->m_wtv = wtv;
     cur = new FXCursor(m_app, FX::CURSOR_ARROW);
     m_app->setDefaultCursor(DEF_RARROW_CURSOR, cur);
     m_app->init(argc, argv);
@@ -106,17 +227,23 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
     m_filemenu = new FXMenuPane(m_mw);
     new FXMenuTitle(m_mb, "&File", NULL, m_filemenu);
     sel = GUIObject::ID_EXIT;
-    new FXMenuCommand(m_filemenu, "&Exit\t\tExit the application.", NULL, this, sel);
+    new FXMenuCommand(m_filemenu, "&Exit\t\tExit the application.", NULL,
+                      this, sel);
     m_helpmenu = new FXMenuPane(m_mw);
     new FXMenuTitle(m_mb, "&Help", NULL, m_helpmenu);
     sel = GUIObject::ID_HELP;
-    new FXMenuCommand(m_helpmenu, "&Help...\t\tDisplay help information.", NULL, this, sel);
+    new FXMenuCommand(m_helpmenu, "&Help...\t\tDisplay help information.",
+                      NULL, this, sel);
     sel = GUIObject::ID_ABOUT;
-    new FXMenuCommand(m_helpmenu, "&About\t\tDisplay version information.", NULL, this, sel);
+    new FXMenuCommand(m_helpmenu, "&About\t\tDisplay version information.",
+                      NULL, this, sel);
     m_app->create();
     m_mw->show(PLACEMENT_SCREEN);
-    m_mw->setTarget(this);
-    m_mw->setSelector(GUIObject::ID_MAINWINDOW);
+    /* set the video image offsets */
+    m_mw->m_left_offset = 4;
+    m_mw->m_top_offset = m_mb->getHeight() + 4;
+    m_mw->m_right_offset = 4;
+    m_mw->m_bottom_offset = 4;
     m_image = NULL;
     m_width = 0;
     m_height = 0;
@@ -140,7 +267,8 @@ GUIObject::mainLoop()
 }
 
 /*****************************************************************************/
-int GUIObject::checkWrite()
+int
+GUIObject::checkWrite()
 {
     FXInputHandle ih;
 
@@ -157,7 +285,8 @@ int GUIObject::checkWrite()
 }
 
 /*****************************************************************************/
-int GUIObject::schedAudio()
+int
+GUIObject::schedAudio()
 {
     LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     m_app->addTimeout(this, GUIObject::ID_AUDIO, 16, NULL);
@@ -165,58 +294,14 @@ int GUIObject::schedAudio()
 }
 
 /*****************************************************************************/
-long
-GUIObject::onConfigure(FXObject* obj, FXSelector sel, void* ptr)
+int
+GUIObject::invalidate(int x, int y, int width, int height)
 {
-    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
-    m_app->addTimeout(this, GUIObject::ID_MAINWINDOW, 0, NULL);
-    return 1;
-}
-
-/*****************************************************************************/
-long
-GUIObject::onResizeTimeout(FXObject* obj, FXSelector sel, void* ptr)
-{
-    int x;
-    int y;
-    int width;
-    int height;
-
-    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
-    x = 2;
-    y = m_mb->getHeight() + 2;
-    width = m_mw->getWidth() - x - 2;
-    height = m_mw->getHeight() - y - 2;
-    if ((x != m_x) || (y != m_y) ||
-        (width != m_width) || (height != m_height))
-    {
-        LOGLN0((m_wtv, LOG_INFO, LOGS "resize to %dx%dx%dx%d",
-                LOGP, x, y, width, height));
-        m_wtv->drawable_x = m_x = x;
-        m_wtv->drawable_y = m_y = y;
-        m_wtv->drawable_width = m_width = width;
-        m_wtv->drawable_height = m_height = height;
-        delete m_image;
-        m_image = new FXImage(m_app, NULL, 0, m_width, m_height);
-        m_wtv->bs_pixmap = m_image->id();
-    }
-    return 1;
-}
-
-/*****************************************************************************/
-long
-GUIObject::onPaint(FXObject* obj, FXSelector sel, void* ptr)
-{
-    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
-    return 1;
-}
-
-/*****************************************************************************/
-long
-GUIObject::onUpdate(FXObject* obj, FXSelector sel, void* ptr)
-{
-    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
-    return 1;
+    LOGLN10((m_wtv, LOG_INFO, LOGS "x %d y %d width %d height %d", LOGP,
+             x, y , width, height));
+    m_mw->update(x + m_mw->m_left_offset, y + m_mw->m_top_offset,
+                 width, height);
+    return 0;
 }
 
 /*****************************************************************************/
@@ -337,10 +422,6 @@ GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
 
 FXDEFMAP(GUIObject) GUIObjectMap[] =
 {
-    FXMAPFUNC(SEL_CONFIGURE, GUIObject::ID_MAINWINDOW, GUIObject::onConfigure),
-    FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_MAINWINDOW, GUIObject::onResizeTimeout),
-    FXMAPFUNC(SEL_PAINT, GUIObject::ID_MAINWINDOW, GUIObject::onPaint),
-    FXMAPFUNC(SEL_UPDATE, GUIObject::ID_MAINWINDOW, GUIObject::onUpdate),
     FXMAPFUNC(SEL_IO_READ, GUIObject::ID_SOCKET, GUIObject::onEventRead),
     FXMAPFUNC(SEL_IO_WRITE, GUIObject::ID_SOCKET, GUIObject::onEventWrite),
     FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_FRAME, GUIObject::onFrameTimeout),
@@ -395,7 +476,6 @@ gui_create(int argc, char** argv, struct wtv_info** wtv)
     (*wtv)->gui_obj = go;
     xcb = XGetXCBConnection((Display*)(go->m_app->getDisplay()));
     (*wtv)->xcb = xcb;
-    (*wtv)->drawable = go->m_mw->id();
     cookie = xcb_render_query_pict_formats(xcb);
     formats = xcb_render_query_pict_formats_reply(xcb, cookie, NULL);
     screen = xcb_setup_roots_iterator(xcb_get_setup(xcb)).data;
@@ -403,7 +483,7 @@ gui_create(int argc, char** argv, struct wtv_info** wtv)
             find_format_for_visual(formats, screen->root_visual);
     free(formats);
     (*wtv)->gc = xcb_generate_id(xcb);
-    xcb_create_gc(xcb, (*wtv)->gc, (*wtv)->drawable, 0, NULL);
+    xcb_create_gc(xcb, (*wtv)->gc, go->m_mw->id(), 0, NULL);
     return 0;
 }
 
@@ -475,6 +555,17 @@ int
 wtv_writeln(struct wtv_info* wtv, const char* msg)
 {
     printf("%s\n", msg);
+    return 0;
+}
+
+/*****************************************************************************/
+int
+wtv_invalidate(struct wtv_info* wtv, int x, int y, int width, int height)
+{
+    GUIObject* go;
+
+    go = (GUIObject*)(wtv->gui_obj);
+    go->invalidate(x, y, width, height);
     return 0;
 }
 
