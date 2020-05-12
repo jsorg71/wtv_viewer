@@ -66,13 +66,13 @@ wtv_pa_init(const char* name, void** handle)
     self = (struct wtv_pa*)malloc(sizeof(struct wtv_pa));
     memset(self, 0, sizeof(struct wtv_pa));
     self->pa_mainloop = pa_threaded_mainloop_new();
-    if (self->pa_mainloop == 0)
+    if (self->pa_mainloop == NULL)
     {
         return 1;
     }
     api = pa_threaded_mainloop_get_api(self->pa_mainloop);
     self->pa_context = pa_context_new(api, name);
-    if (self->pa_context == 0)
+    if (self->pa_context == NULL)
     {
         pa_threaded_mainloop_free(self->pa_mainloop);
         return 2;
@@ -119,10 +119,24 @@ wtv_pa_deinit(void* handle)
     struct wtv_pa* self;
 
     self = (struct wtv_pa*)handle;
-    if (self == 0)
+    if (self == NULL)
     {
         return 0;
     }
+    if (self->pa_mainloop != NULL)
+    {
+        pa_threaded_mainloop_stop(self->pa_mainloop);
+    }
+    if (self->pa_context != NULL)
+    {
+        pa_context_disconnect(self->pa_context);
+        pa_context_unref(self->pa_context);
+    }
+    if (self->pa_mainloop != NULL)
+    {
+        pa_threaded_mainloop_free(self->pa_mainloop);
+    }
+    free(self);
     return 0;
 }
 
@@ -134,7 +148,7 @@ wtv_pa_stream_state_callback(pa_stream* stream, void* userdata)
     pa_stream_state_t state;
 
     self = (struct wtv_pa*)userdata;
-    state = pa_stream_get_state(self->pa_stream);
+    state = pa_stream_get_state(stream);
     switch (state)
     {
         case PA_STREAM_READY:
@@ -221,8 +235,9 @@ wtv_pa_start(void* handle, const char* name, int ms_latency, int format)
     pa_threaded_mainloop_lock(self->pa_mainloop);
     self->pa_stream = pa_stream_new(self->pa_context, name, &sample_spec,
                                     channel_map_p);
-    if (self->pa_stream == 0)
+    if (self->pa_stream == NULL)
     {
+        pa_threaded_mainloop_unlock(self->pa_mainloop);
         return 3;
     }
     /* install essential callbacks */
@@ -251,6 +266,7 @@ wtv_pa_start(void* handle, const char* name, int ms_latency, int format)
     {
         /* todo: cleanup */
         self->pa_stream = 0;
+        pa_threaded_mainloop_unlock(self->pa_mainloop);
         return 4;
     }
     while (1)
@@ -264,10 +280,12 @@ wtv_pa_start(void* handle, const char* name, int ms_latency, int format)
         {
             /* todo: cleanup */
             self->pa_stream = 0;
+            pa_threaded_mainloop_unlock(self->pa_mainloop);
             return 5;
         }
         pa_threaded_mainloop_wait(self->pa_mainloop);
     }
+    pa_stream_trigger(self->pa_stream, NULL, NULL);
     pa_threaded_mainloop_unlock(self->pa_mainloop);
     return 0;
 }
