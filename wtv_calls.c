@@ -127,6 +127,7 @@ wtv_process_msg_audio(struct wtv_info* winfo)
     struct stream* out_s;
     struct stream* audio_s;
 
+    LOGLN10((winfo, LOG_INFO, LOGS, LOGP));
     in_s = winfo->in_s;
     if (!s_check_rem(in_s, 16))
     {
@@ -146,21 +147,30 @@ wtv_process_msg_audio(struct wtv_info* winfo)
         {
             return 3;
         }
-        format = CAP_PA_FORMAT_48000_6CH_16LE;
-        switch (channels)
-        {
-            case 1:
-                format = CAP_PA_FORMAT_48000_1CH_16LE;
-                break;
-            case 2:
-                format = CAP_PA_FORMAT_48000_2CH_16LE;
-                break;
-        }
-        if (wtv_pa_start(winfo->pa, "wtv_viewer", winfo->ms_latency,
-                         format) != 0)
-        {
-            return 4;
-        }
+    }
+    LOGLN10((winfo, LOG_INFO, LOGS "is_audio_playing %d", LOGP,
+             winfo->is_audio_playing));
+    if (winfo->is_audio_playing == 0)
+    {
+            format = CAP_PA_FORMAT_48000_6CH_16LE;
+            switch (channels)
+            {
+                case 1:
+                    format = CAP_PA_FORMAT_48000_1CH_16LE;
+                    break;
+                case 2:
+                    format = CAP_PA_FORMAT_48000_2CH_16LE;
+                    break;
+            }
+            LOGLN0((winfo, LOG_INFO, LOGS "starting audio", LOGP));
+            if (wtv_pa_start(winfo->pa, "wtv_viewer", winfo->ms_latency,
+                             format) != 0)
+            {
+                LOGLN0((winfo, LOG_ERROR, LOGS "wtv_pa_start failed", LOGP));
+                return 4;
+            }
+            LOGLN0((winfo, LOG_INFO, LOGS "audio started", LOGP));
+            winfo->is_audio_playing = 1;
     }
     if (winfo->pa != NULL)
     {
@@ -422,6 +432,55 @@ wtv_start(struct wtv_info* winfo)
     }
     free(out_s->data);
     free(out_s);
+    return 0;
+}
+
+/*****************************************************************************/
+int
+wtv_stop(struct wtv_info* winfo)
+{
+    struct stream* s;
+    struct stream* s1;
+
+    s = winfo->out_s_head;
+    while (s != NULL)
+    {
+        s1 = s;
+        s = s->next;
+        free(s1->data);
+        free(s1);
+    }
+    winfo->out_s_head = NULL;
+    winfo->out_s_tail = NULL;
+
+    if (winfo->is_audio_playing)
+    {
+        LOGLN0((winfo, LOG_INFO, LOGS "stopping audio", LOGP));
+        if (wtv_pa_stop(winfo->pa) != 0)
+        {
+            LOGLN0((winfo, LOG_ERROR, LOGS "wtv_pa_stop failed", LOGP));
+        }
+        LOGLN0((winfo, LOG_INFO, LOGS "audio stopped", LOGP));
+        winfo->is_audio_playing = 0;
+    }
+    s = winfo->audio_head;
+    while (s != NULL)
+    {
+        s1 = s;
+        s = s->next;
+        free(s1->data);
+        free(s1);
+    }
+    winfo->audio_head = NULL;
+    winfo->audio_tail = NULL;
+    winfo->audio_bytes = 0;
+
+    if (winfo->in_s != NULL)
+    {
+        free(winfo->in_s->data);
+        free(winfo->in_s);
+        winfo->in_s = NULL;
+    }
     return 0;
 }
 

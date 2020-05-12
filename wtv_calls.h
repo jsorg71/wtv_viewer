@@ -19,7 +19,7 @@ struct wtv_info
     int bs_pixmap_width;
     int bs_pixmap_height;
     int ms_latency;
-    int pad0;
+    int is_audio_playing;
     void* xcb;
 };
 
@@ -31,6 +31,8 @@ int
 wtv_connect_to_uds(struct wtv_info* winfo, const char* filename);
 int
 wtv_start(struct wtv_info* winfo);
+int
+wtv_stop(struct wtv_info* winfo);
 int
 wtv_request_frame(struct wtv_info* winfo);
 int
