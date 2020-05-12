@@ -45,6 +45,7 @@ public:
 /*****************************************************************************/
 FXMyMainWindow::FXMyMainWindow()
 {
+    m_wtv = NULL;
     m_app = NULL;
     m_image = NULL;
     m_image_width = 0;
@@ -60,6 +61,7 @@ FXMyMainWindow::FXMyMainWindow(FXApp* app):
                 FXMainWindow(app, "wtv_viewer", NULL, NULL, DECOR_ALL,
                              0, 0, 640, 480)
 {
+    m_wtv = NULL;
     m_app = app;
     m_image = NULL;
     m_image_width = 0;
@@ -82,6 +84,7 @@ FXMyMainWindow::onConfigure(FXObject* obj, FXSelector sel, void* ptr)
 {
     int width;
     int height;
+    FXDCWindow* dc;
 
     FXMainWindow::onConfigure(obj, sel, ptr);
     width = getWidth() - m_left_offset - m_right_offset;
@@ -93,8 +96,9 @@ FXMyMainWindow::onConfigure(FXObject* obj, FXSelector sel, void* ptr)
         delete m_image;
         m_image = new FXImage(m_app, NULL, 0, m_image_width, m_image_height);
         m_image->create();
-        FXDCWindow dc(m_image);
-        dc.fillRectangle(0, 0, m_image_width, m_image_height);
+        dc = new FXDCWindow(m_image);
+        dc->fillRectangle(0, 0, m_image_width, m_image_height);
+        delete dc;
         if (m_wtv != NULL)
         {
             m_wtv->bs_pixmap = m_image->id();
@@ -109,29 +113,39 @@ FXMyMainWindow::onConfigure(FXObject* obj, FXSelector sel, void* ptr)
 long
 FXMyMainWindow::onPaint(FXObject* obj, FXSelector sel, void* ptr)
 {
-    FXEvent* evt = (FXEvent*)ptr;
-    FXRegion reg(evt->rect.x, evt->rect.y, evt->rect.w, evt->rect.h);
-    if (!reg.empty())
+    FXEvent* evt;
+    FXRegion* reg;
+    FXRegion* image_reg;
+    FXDCWindow* dc;
+    int width;
+    int height;
+
+    evt = (FXEvent*)ptr;
+    reg = new FXRegion(evt->rect.x, evt->rect.y, evt->rect.w, evt->rect.h);
+    if (!reg->empty())
     {
-        int width = getWidth();
-        int height = getHeight();
-        FXDCWindow dc(this);
+        width = getWidth();
+        height = getHeight();
+        dc = new FXDCWindow(this);
         if (m_image != NULL)
         {
-            dc.setClipRegion(reg);
-            FXRegion image_reg(m_left_offset, m_top_offset,
-                               width - m_left_offset - m_right_offset,
-                               height - m_top_offset - m_bottom_offset);
-            reg -= image_reg;
-            dc.drawImage(m_image, m_left_offset, m_top_offset);
+            dc->setClipRegion(*reg);
+            image_reg = new FXRegion(m_left_offset, m_top_offset,
+                                     width - m_left_offset - m_right_offset,
+                                     height - m_top_offset - m_bottom_offset);
+            *reg -= *image_reg;
+            dc->drawImage(m_image, m_left_offset, m_top_offset);
+            delete image_reg;
         }
-        if (!reg.empty())
+        if (!reg->empty())
         {
-            dc.setClipRegion(reg);
-            dc.setForeground(backColor);
-            dc.fillRectangle(0, 0, width, height);
+            dc->setClipRegion(*reg);
+            dc->setForeground(backColor);
+            dc->fillRectangle(0, 0, width, height);
         }
+        delete dc;
     }
+    delete reg;
     return 1;
 }
 
@@ -155,6 +169,7 @@ public:
     int checkWrite();
     int schedAudio();
     int invalidate(int x, int y, int width, int height);
+    int doOpenDialog();
 public:
     struct wtv_info* m_wtv;
     FXApp* m_app;
@@ -165,6 +180,8 @@ public:
     FXMenuBar* m_mb;
     FXMenuPane* m_filemenu;
     FXMenuPane* m_helpmenu;
+    FXStatusBar* m_sb;
+    FXLabel* m_sbl1;
     int m_x;
     int m_y;
     int m_width;
@@ -177,6 +194,7 @@ public:
     long onAudioTimeout(FXObject* obj, FXSelector sel, void* ptr);
     long onStatsTimeout(FXObject* obj, FXSelector sel, void* ptr);
     long onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr);
+    long onCmdOpen(FXObject* obj, FXSelector sel, void* ptr);
     enum _ids
     {
         ID_MAINWINDOW = 0,
@@ -185,6 +203,7 @@ public:
         ID_AUDIO,
         ID_STATS,
         ID_STARTUP,
+        ID_OPEN,
         ID_EXIT,
         ID_HELP,
         ID_ABOUT,
@@ -213,11 +232,12 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
 
     m_wtv = wtv;
     m_app = new FXApp("wtv_viewer", "wtv_viewer");
-    m_mw = new FXMyMainWindow(m_app);
-    m_mw->m_wtv = wtv;
     cur = new FXCursor(m_app, FX::CURSOR_ARROW);
     m_app->setDefaultCursor(DEF_RARROW_CURSOR, cur);
     m_app->init(argc, argv);
+    m_mw = new FXMyMainWindow(m_app);
+    m_mw->m_wtv = wtv;
+    /* menu */
     flags = LAYOUT_SIDE_TOP | LAYOUT_FILL_X;
     m_topdock = new FXDockSite(m_mw, flags);
     flags = FRAME_RAISED;
@@ -226,6 +246,9 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
     m_mb = new FXMenuBar(m_topdock, m_tbs, flags);
     m_filemenu = new FXMenuPane(m_mw);
     new FXMenuTitle(m_mb, "&File", NULL, m_filemenu);
+    sel = GUIObject::ID_OPEN;
+    new FXMenuCommand(m_filemenu, "&Open\t\tOpen a new source.", NULL,
+                      this, sel);
     sel = GUIObject::ID_EXIT;
     new FXMenuCommand(m_filemenu, "&Exit\t\tExit the application.", NULL,
                       this, sel);
@@ -237,13 +260,18 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
     sel = GUIObject::ID_ABOUT;
     new FXMenuCommand(m_helpmenu, "&About\t\tDisplay version information.",
                       NULL, this, sel);
+    /* status bar */
+    flags = LAYOUT_SIDE_BOTTOM | LAYOUT_FILL_X | STATUSBAR_WITH_DRAGCORNER |
+            FRAME_RAISED;
+    m_sb = new FXStatusBar(m_mw, flags);
+    m_sbl1 = new FXLabel(m_sb, "", NULL, LAYOUT_RIGHT | LAYOUT_CENTER_Y);
     m_app->create();
     m_mw->show(PLACEMENT_SCREEN);
     /* set the video image offsets */
     m_mw->m_left_offset = 4;
     m_mw->m_top_offset = m_mb->getHeight() + 4;
     m_mw->m_right_offset = 4;
-    m_mw->m_bottom_offset = 4;
+    m_mw->m_bottom_offset = m_sb->getHeight() + 4;
     m_image = NULL;
     m_width = 0;
     m_height = 0;
@@ -370,8 +398,8 @@ GUIObject::onStatsTimeout(FXObject* obj, FXSelector sel, void* ptr)
 }
 
 /*****************************************************************************/
-long
-GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
+int
+GUIObject::doOpenDialog()
 {
     FXInputHandle ih;
     FXbool ok;
@@ -386,8 +414,7 @@ GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
     ok = picker->execute(PLACEMENT_OWNER);
     if (!ok)
     {
-        m_app->exit();
-        return 1;
+        return 0;
     }
     count = picker->m_list->getNumItems();
     for (index = 0; index < count; index++)
@@ -402,14 +429,24 @@ GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
     delete picker;
     if (index == count)
     {
-        m_app->exit();
-        return 1;
+        return 0;
     }
+    if (m_wtv->sck > 0)
+    {
+        ih = (FXInputHandle)(m_wtv->sck);
+        m_app->removeInput(ih, INPUT_READ);
+        m_app->removeInput(ih, INPUT_WRITE);
+        close(m_wtv->sck);
+        m_wtv->sck = 0;
+    }
+    m_app->removeTimeout(this, GUIObject::ID_FRAME);
+    m_app->removeTimeout(this, GUIObject::ID_STATS);
+    m_app->removeTimeout(this, GUIObject::ID_AUDIO);
+    wtv_stop(m_wtv);
     m_wtv->sck = wtv_connect_to_uds(m_wtv, str.text());
     if (m_wtv->sck == -1)
     {
-        m_app->exit();
-        return 1;
+        return 0;
     }
     m_mw->setTitle(str + " - wtv_viewer");
     wtv_start(m_wtv);
@@ -417,11 +454,28 @@ GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
     m_app->addInput(ih, INPUT_READ, this, GUIObject::ID_SOCKET);
     m_app->addTimeout(this, GUIObject::ID_FRAME, 100, NULL);
     m_app->addTimeout(this, GUIObject::ID_STATS, 60000, NULL);
+    return 0;
+}
+
+/*****************************************************************************/
+long
+GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
+{
+    doOpenDialog();
+    return 1;
+}
+
+/*****************************************************************************/
+long
+GUIObject::onCmdOpen(FXObject* obj, FXSelector sel, void* ptr)
+{
+    doOpenDialog();
     return 1;
 }
 
 FXDEFMAP(GUIObject) GUIObjectMap[] =
 {
+    FXMAPFUNC(SEL_COMMAND, GUIObject::ID_OPEN, GUIObject::onCmdOpen),
     FXMAPFUNC(SEL_IO_READ, GUIObject::ID_SOCKET, GUIObject::onEventRead),
     FXMAPFUNC(SEL_IO_WRITE, GUIObject::ID_SOCKET, GUIObject::onEventWrite),
     FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_FRAME, GUIObject::onFrameTimeout),
