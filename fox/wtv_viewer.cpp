@@ -101,9 +101,9 @@ FXMyMainWindow::onConfigure(FXObject* obj, FXSelector sel, void* ptr)
         delete dc;
         if (m_wtv != NULL)
         {
-            m_wtv->bs_pixmap = m_image->id();
-            m_wtv->bs_pixmap_width = m_image_width;
-            m_wtv->bs_pixmap_height = m_image_height;
+            m_wtv->drawable_id = m_image->id();
+            m_wtv->drawable_width = m_image_width;
+            m_wtv->drawable_height = m_image_height;
         }
     }
     return 1;
@@ -168,7 +168,7 @@ public:
     int mainLoop();
     int checkWrite();
     int schedAudio();
-    int invalidate(int x, int y, int width, int height);
+    int drawDrawable();
     int doOpenDialog();
 public:
     struct wtv_info* m_wtv;
@@ -323,12 +323,10 @@ GUIObject::schedAudio()
 
 /*****************************************************************************/
 int
-GUIObject::invalidate(int x, int y, int width, int height)
+GUIObject::drawDrawable()
 {
-    LOGLN10((m_wtv, LOG_INFO, LOGS "x %d y %d width %d height %d", LOGP,
-             x, y , width, height));
-    m_mw->update(x + m_mw->m_left_offset, y + m_mw->m_top_offset,
-                 width, height);
+    m_mw->update(m_mw->m_left_offset, m_mw->m_top_offset,
+                 m_wtv->drawable_width, m_wtv->drawable_height);
     return 0;
 }
 
@@ -614,12 +612,12 @@ wtv_writeln(struct wtv_info* wtv, const char* msg)
 
 /*****************************************************************************/
 int
-wtv_invalidate(struct wtv_info* wtv, int x, int y, int width, int height)
+wtv_gui_draw_drawable(struct wtv_info* wtv)
 {
     GUIObject* go;
 
     go = (GUIObject*)(wtv->gui_obj);
-    go->invalidate(x, y, width, height);
+    go->drawDrawable();
     return 0;
 }
 

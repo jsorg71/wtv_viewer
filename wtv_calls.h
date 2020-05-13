@@ -15,9 +15,9 @@ struct wtv_info
     int sck;
     int pict_format_default;
     int gc;
-    int bs_pixmap;
-    int bs_pixmap_width;
-    int bs_pixmap_height;
+    int drawable_id;
+    int drawable_width;
+    int drawable_height;
     int ms_latency;
     int is_audio_playing;
     void* xcb;
@@ -60,7 +60,7 @@ wtv_sched_audio(struct wtv_info* winfo);
 int
 wtv_writeln(struct wtv_info* winfo, const char* msg);
 int
-wtv_invalidate(struct wtv_info* winfo, int x, int y, int width, int height);
+wtv_gui_draw_drawable(struct wtv_info* winfo);
 
 #define LOG_ERROR 0
 #define LOG_WARN  1

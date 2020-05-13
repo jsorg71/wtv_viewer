@@ -117,14 +117,10 @@ wtv_check_audio(struct wtv_info* winfo)
 static int
 wtv_process_msg_audio(struct wtv_info* winfo)
 {
-    int pts;
-    int dts;
     int channels;
     int bytes;
-    int data_bytes_processed;
     int format;
     struct stream* in_s;
-    struct stream* out_s;
     struct stream* audio_s;
 
     LOGLN10((winfo, LOG_INFO, LOGS, LOGP));
@@ -133,8 +129,8 @@ wtv_process_msg_audio(struct wtv_info* winfo)
     {
         return 1;
     }
-    in_uint32_le(in_s, pts);
-    in_uint32_le(in_s, dts);
+    in_uint8s(in_s, 4); /* pts */
+    in_uint8s(in_s, 4); /* dts */
     in_uint32_le(in_s, channels);
     in_uint32_le(in_s, bytes);
     if (!s_check_rem(in_s, bytes))
@@ -256,8 +252,6 @@ read_fd(int sck, int *fd)
 static int
 wtv_process_msg_video(struct wtv_info* winfo)
 {
-    int pts;
-    int dts;
     int fd;
     int fd_width;
     int fd_height;
@@ -272,8 +266,8 @@ wtv_process_msg_video(struct wtv_info* winfo)
     {
         return 1;
     }
-    in_uint32_le(in_s, pts);
-    in_uint32_le(in_s, dts);
+    in_uint8s(in_s, 4); /* pts */
+    in_uint8s(in_s, 4); /* dts */
     in_uint32_le(in_s, fd);
     in_uint32_le(in_s, fd_width);
     in_uint32_le(in_s, fd_height);
@@ -288,6 +282,7 @@ wtv_process_msg_video(struct wtv_info* winfo)
     {
         wtv_fd_to_drawable(winfo, fd, fd_width, fd_height, fd_stride, fd_size, fd_bpp);
         close(fd);
+        wtv_gui_draw_drawable(winfo);
     }
     return 0;
 }
