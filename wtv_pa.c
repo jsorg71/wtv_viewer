@@ -23,7 +23,6 @@
 #include <pulse/pulseaudio.h>
 
 #include "wtv_pa.h"
-//#include "hdhome_run_log.h"
 
 struct wtv_pa
 {
@@ -40,7 +39,7 @@ wtv_pa_context_state_callback(pa_context* context, void* userdata)
     pa_context_state_t state;
 
     self = (struct wtv_pa*)userdata;
-    state = pa_context_get_state(self->pa_context);
+    state = pa_context_get_state(context);
     switch (state)
     {
         case PA_CONTEXT_READY:
@@ -168,6 +167,9 @@ static void
 wtv_pa_stream_request_callback(pa_stream* stream, size_t length, void* userdata)
 {
     struct wtv_pa* self;
+
+    (void)stream;
+    (void)length;
 
     self = (struct wtv_pa*)userdata;
     pa_threaded_mainloop_signal(self->pa_mainloop, 0);
@@ -297,6 +299,9 @@ wtv_pa_pulse_stream_success_callback(pa_stream* stream, int success,
 {
     struct wtv_pa* self;
 
+    (void)stream;
+    (void)success;
+
     self = (struct wtv_pa*)userdata;
     pa_threaded_mainloop_signal(self->pa_mainloop, 0);
 }
@@ -415,16 +420,21 @@ int
 wtv_pa_print_stats(void* handle)
 {
     struct wtv_pa* self;
+#if 0
     pa_usec_t latency;
     int negative;
+#endif
 
     self = (struct wtv_pa*)handle;
     if (self != NULL)
     {
         if (self->pa_stream != NULL)
         {
-            //pa_stream_get_latency(self->pa_stream, &latency, &negative);
-            //printf("wtv_pa_print_stats: latency %ld negative %d\n", latency, negative);
+#if 0
+            pa_stream_get_latency(self->pa_stream, &latency, &negative);
+            printf("wtv_pa_print_stats: latency %ld negative %d\n",
+                   latency, negative);
+#endif
         }
     }
     return 0;
