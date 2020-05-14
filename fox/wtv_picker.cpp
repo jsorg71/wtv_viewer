@@ -12,11 +12,14 @@
 FXDEFMAP(PickerDialog) PickerDialogMap[] =
 {
     FXMAPFUNC(SEL_COMMAND, PickerDialog::ID_BUTTON, PickerDialog::onPress),
-    FXMAPFUNC(SEL_TIMEOUT, PickerDialog::ID_STARTUP, PickerDialog::onStartupTimeout),
-    FXMAPFUNC(SEL_DOUBLECLICKED, PickerDialog::ID_LIST, PickerDialog::onDoubleClicked)
+    FXMAPFUNC(SEL_TIMEOUT, PickerDialog::ID_STARTUP,
+              PickerDialog::onStartupTimeout),
+    FXMAPFUNC(SEL_DOUBLECLICKED, PickerDialog::ID_LIST,
+              PickerDialog::onDoubleClicked)
 };
 
-FXIMPLEMENT(PickerDialog, FXDialogBox, PickerDialogMap, ARRAYNUMBER(PickerDialogMap))
+FXIMPLEMENT(PickerDialog, FXDialogBox, PickerDialogMap,
+            ARRAYNUMBER(PickerDialogMap))
 
 /*****************************************************************************/
 PickerDialog::PickerDialog():FXDialogBox()
@@ -28,7 +31,8 @@ PickerDialog::PickerDialog():FXDialogBox()
 }
 
 /*****************************************************************************/
-PickerDialog::PickerDialog(FXApp* app, FXWindow* parent, struct wtv_info* wtv):FXDialogBox(parent, "Pick")
+PickerDialog::PickerDialog(FXApp* app, FXWindow* parent,
+                           struct wtv_info* wtv):FXDialogBox(parent, "Pick")
 {
     FXuint flags;
     FXSelector sel;
@@ -40,11 +44,13 @@ PickerDialog::PickerDialog(FXApp* app, FXWindow* parent, struct wtv_info* wtv):F
 
     flags = BUTTON_INITIAL | BUTTON_NORMAL | LAYOUT_EXPLICIT | BUTTON_DEFAULT;
     sel = PickerDialog::ID_BUTTON;
-    m_ok_but = new FXButton(this, "&Ok", NULL, this, sel, flags, 200, 360, 80, 30);
+    m_ok_but = new FXButton(this, "&Ok", NULL, this, sel, flags,
+                            200, 360, 80, 30);
 
     flags = BUTTON_NORMAL | LAYOUT_EXPLICIT;
     sel = PickerDialog::ID_BUTTON;
-    m_cancel_but = new FXButton(this, "&Cancel", NULL, this, sel, flags, 300, 360, 80, 30);
+    m_cancel_but = new FXButton(this, "&Cancel", NULL, this, sel, flags,
+                                300, 360, 80, 30);
 
     flags = LAYOUT_EXPLICIT | LIST_NORMAL;
     sel = PickerDialog::ID_LIST;
@@ -82,6 +88,10 @@ PickerDialog::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
     struct dirent * entry;
     char filename[256];
     int index;
+
+    (void)obj;
+    (void)sel;
+    (void)ptr;
 
     LOGLN0((m_wtv, LOG_INFO, LOGS, LOGP));
     ldir = opendir("/tmp");

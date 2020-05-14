@@ -54,11 +54,11 @@ logln(struct wtv_info* winfo, int log_level, const char* format, ...);
 
 /* in gui */
 int
-wtv_check_write(struct wtv_info* winfo);
+wtv_gui_sched_write(struct wtv_info* winfo);
 int
-wtv_sched_audio(struct wtv_info* winfo);
+wtv_gui_sched_audio(struct wtv_info* winfo);
 int
-wtv_writeln(struct wtv_info* winfo, const char* msg);
+wtv_gui_writeln(struct wtv_info* winfo, const char* msg);
 int
 wtv_gui_draw_drawable(struct wtv_info* winfo);
 

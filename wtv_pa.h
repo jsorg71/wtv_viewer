@@ -29,9 +29,9 @@ extern "C"
 #define CAP_PA_FORMAT_48000_6CH_16LE 6
 
 int
-wtv_pa_init(const char* name, void** handle);
+wtv_pa_create(const char* name, void** handle);
 int
-wtv_pa_deinit(void* handle);
+wtv_pa_delete(void* handle);
 int
 wtv_pa_start(void* handle, const char* name, int ms_latency,
              int format);

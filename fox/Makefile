@@ -4,7 +4,7 @@ OBJS=wtv_viewer.o wtv_picker.o
 FOX_CFLAGS=$(shell fox-config --cflags)
 FOX_LIBS=$(shell fox-config --libs)
 
-CXXFLAGS=-O2 -g -Wall -I.. $(FOX_CFLAGS) -fvisibility=hidden -fPIC
+CXXFLAGS=-O2 -g -Wall -Wextra -I.. $(FOX_CFLAGS) -fvisibility=hidden -fPIC
 
 LDFLAGS=
 

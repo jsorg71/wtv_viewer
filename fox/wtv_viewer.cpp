@@ -120,6 +120,9 @@ FXMyMainWindow::onPaint(FXObject* obj, FXSelector sel, void* ptr)
     int width;
     int height;
 
+    (void)obj;
+    (void)sel;
+
     evt = (FXEvent*)ptr;
     reg = new FXRegion(evt->rect.x, evt->rect.y, evt->rect.w, evt->rect.h);
     if (!reg->empty())
@@ -166,7 +169,7 @@ public:
     GUIObject(int argc, char** argv, struct wtv_info* wtv);
     virtual ~GUIObject();
     int mainLoop();
-    int checkWrite();
+    int schedWrite();
     int schedAudio();
     int drawDrawable();
     int doOpenDialog();
@@ -174,7 +177,6 @@ public:
     struct wtv_info* m_wtv;
     FXApp* m_app;
     FXMyMainWindow* m_mw;
-    FXImage* m_image;
     FXDockSite* m_topdock;
     FXToolBarShell* m_tbs;
     FXMenuBar* m_mb;
@@ -182,11 +184,7 @@ public:
     FXMenuPane* m_helpmenu;
     FXStatusBar* m_sb;
     FXLabel* m_sbl1;
-    int m_x;
-    int m_y;
-    int m_width;
-    int m_height;
-    int m_cap_mstime;
+    xcb_connection_t* xcb;
 public:
     long onEventRead(FXObject* obj, FXSelector sel, void* ptr);
     long onEventWrite(FXObject* obj, FXSelector sel, void* ptr);
@@ -217,10 +215,6 @@ GUIObject::GUIObject():FXObject()
     m_wtv = NULL;
     m_app = NULL;
     m_mw = NULL;
-    m_image = NULL;
-    m_width = 0;
-    m_height = 0;
-    m_cap_mstime = 0;
 }
 
 /*****************************************************************************/
@@ -272,18 +266,13 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
     m_mw->m_top_offset = m_mb->getHeight() + 4;
     m_mw->m_right_offset = 4;
     m_mw->m_bottom_offset = m_sb->getHeight() + 4;
-    m_image = NULL;
-    m_width = 0;
-    m_height = 0;
     m_app->addTimeout(this, GUIObject::ID_STARTUP, 100, NULL);
-    m_cap_mstime = 0;
 }
 
 /*****************************************************************************/
 GUIObject::~GUIObject()
 {
     delete m_app;
-    delete m_image;
 }
 
 /*****************************************************************************/
@@ -296,7 +285,7 @@ GUIObject::mainLoop()
 
 /*****************************************************************************/
 int
-GUIObject::checkWrite()
+GUIObject::schedWrite()
 {
     FXInputHandle ih;
 
@@ -336,6 +325,10 @@ GUIObject::onEventRead(FXObject* obj, FXSelector sel, void* ptr)
 {
     FXInputHandle ih;
 
+    (void)obj;
+    (void)sel;
+    (void)ptr;
+
     LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     ih = (FXInputHandle)(m_wtv->sck);
     if (wtv_read(m_wtv) != 0)
@@ -345,7 +338,7 @@ GUIObject::onEventRead(FXObject* obj, FXSelector sel, void* ptr)
         m_app->removeInput(ih, INPUT_WRITE);
         return 0;
     }
-    checkWrite();
+    schedWrite();
     return 1;
 }
 
@@ -354,6 +347,10 @@ long
 GUIObject::onEventWrite(FXObject* obj, FXSelector sel, void* ptr)
 {
     FXInputHandle ih;
+
+    (void)obj;
+    (void)sel;
+    (void)ptr;
 
     LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     ih = (FXInputHandle)(m_wtv->sck);
@@ -364,7 +361,7 @@ GUIObject::onEventWrite(FXObject* obj, FXSelector sel, void* ptr)
         m_app->removeInput(ih, INPUT_WRITE);
         return 0;
     }
-    checkWrite();
+    schedWrite();
     return 1;
 }
 
@@ -372,14 +369,23 @@ GUIObject::onEventWrite(FXObject* obj, FXSelector sel, void* ptr)
 long
 GUIObject::onFrameTimeout(FXObject* obj, FXSelector sel, void* ptr)
 {
+    (void)obj;
+    (void)sel;
+    (void)ptr;
+
     wtv_request_frame(m_wtv);
     m_app->addTimeout(this, GUIObject::ID_FRAME, FRAME_MSTIME, NULL);
     return 1;
 }
 
 /*****************************************************************************/
-long GUIObject::onAudioTimeout(FXObject* obj, FXSelector sel, void* ptr)
+long
+GUIObject::onAudioTimeout(FXObject* obj, FXSelector sel, void* ptr)
 {
+    (void)obj;
+    (void)sel;
+    (void)ptr;
+
     LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     wtv_check_audio(m_wtv);
     return 1;
@@ -389,6 +395,10 @@ long GUIObject::onAudioTimeout(FXObject* obj, FXSelector sel, void* ptr)
 long
 GUIObject::onStatsTimeout(FXObject* obj, FXSelector sel, void* ptr)
 {
+    (void)obj;
+    (void)sel;
+    (void)ptr;
+
     LOGLN0((m_wtv, LOG_INFO, LOGS, LOGP));
     wtv_print_stats(m_wtv);
     m_app->addTimeout(this, GUIObject::ID_STATS, 60000, NULL);
@@ -459,6 +469,10 @@ GUIObject::doOpenDialog()
 long
 GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
 {
+    (void)obj;
+    (void)sel;
+    (void)ptr;
+
     doOpenDialog();
     return 1;
 }
@@ -467,6 +481,10 @@ GUIObject::onStartupTimeout(FXObject* obj, FXSelector sel, void* ptr)
 long
 GUIObject::onCmdOpen(FXObject* obj, FXSelector sel, void* ptr)
 {
+    (void)obj;
+    (void)sel;
+    (void)ptr;
+
     doOpenDialog();
     return 1;
 }
@@ -492,6 +510,7 @@ find_format_for_visual(xcb_render_query_pict_formats_reply_t* formats,
     xcb_render_pictscreen_iterator_t screens;
     xcb_render_pictdepth_iterator_t depths;
     xcb_render_pictvisual_iterator_t visuals;
+    xcb_render_pictformat_t format;
 
     for (screens = xcb_render_query_pict_formats_screens_iterator(formats);
          screens.rem; xcb_render_pictscreen_next(&screens))
@@ -504,7 +523,7 @@ find_format_for_visual(xcb_render_query_pict_formats_reply_t* formats,
             {
                 if (visuals.data->visual == visual)
                 {
-                    xcb_render_pictformat_t format = visuals.data->format;
+                    format = visuals.data->format;
                     return format;
                 }
             }
@@ -527,6 +546,7 @@ gui_create(int argc, char** argv, struct wtv_info** wtv)
     go = new GUIObject(argc, argv, *wtv);
     (*wtv)->gui_obj = go;
     xcb = XGetXCBConnection((Display*)(go->m_app->getDisplay()));
+    go->xcb = xcb;
     (*wtv)->xcb = xcb;
     cookie = xcb_render_query_pict_formats(xcb);
     formats = xcb_render_query_pict_formats_reply(xcb, cookie, NULL);
@@ -557,6 +577,7 @@ gui_delete(struct wtv_info* wtv)
     GUIObject* go;
 
     go = (GUIObject*)(wtv->gui_obj);
+    xcb_free_gc(go->xcb, wtv->gc);
     go->m_app->exit(); /* close display, write registry */
     delete go;
     if (wtv->sck != -1)
@@ -582,18 +603,18 @@ main(int argc, char** argv)
 
 /*****************************************************************************/
 int
-wtv_check_write(struct wtv_info* wtv)
+wtv_gui_sched_write(struct wtv_info* wtv)
 {
     GUIObject* go;
 
     go = (GUIObject*)(wtv->gui_obj);
-    go->checkWrite();
+    go->schedWrite();
     return 0;
 }
 
 /*****************************************************************************/
 int
-wtv_sched_audio(struct wtv_info* wtv)
+wtv_gui_sched_audio(struct wtv_info* wtv)
 {
     GUIObject* go;
 
@@ -604,8 +625,10 @@ wtv_sched_audio(struct wtv_info* wtv)
 
 /*****************************************************************************/
 int
-wtv_writeln(struct wtv_info* wtv, const char* msg)
+wtv_gui_writeln(struct wtv_info* wtv, const char* msg)
 {
+    (void)wtv;
+
     printf("%s\n", msg);
     return 0;
 }

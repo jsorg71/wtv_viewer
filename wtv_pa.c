@@ -56,7 +56,7 @@ wtv_pa_context_state_callback(pa_context* context, void* userdata)
 
 /******************************************************************************/
 int
-wtv_pa_init(const char* name, void** handle)
+wtv_pa_create(const char* name, void** handle)
 {
     struct wtv_pa* self;
     pa_mainloop_api* api;
@@ -113,7 +113,7 @@ wtv_pa_init(const char* name, void** handle)
 
 /******************************************************************************/
 int
-wtv_pa_deinit(void* handle)
+wtv_pa_delete(void* handle)
 {
     struct wtv_pa* self;
 

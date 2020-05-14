@@ -54,7 +54,7 @@ wtv_out_stream(struct wtv_info* winfo, struct stream* out_s)
         winfo->out_s_tail->next = lout_s;
         winfo->out_s_tail = lout_s;
     }
-    wtv_check_write(winfo);
+    wtv_gui_sched_write(winfo);
     return 0;
 }
 
@@ -108,7 +108,7 @@ wtv_check_audio(struct wtv_info* winfo)
     }
     if (winfo->audio_head != NULL)
     {
-        wtv_sched_audio(winfo);
+        wtv_gui_sched_audio(winfo);
     }
     return 0;
 }
@@ -139,7 +139,7 @@ wtv_process_msg_audio(struct wtv_info* winfo)
     }
     if (winfo->pa == NULL)
     {
-        if (wtv_pa_init("wtv_viewer", &(winfo->pa)) != 0)
+        if (wtv_pa_create("wtv_viewer", &(winfo->pa)) != 0)
         {
             return 3;
         }
@@ -689,7 +689,7 @@ logln(struct wtv_info* winfo, int log_level, const char* format, ...)
         get_mstime(&mstime);
         wtv_snprintf(log_line + 1024, 1024, "[%10.10u][%s]%s",
                      mstime, g_log_pre[log_level % 4], log_line);
-        wtv_writeln(winfo, log_line + 1024);
+        wtv_gui_writeln(winfo, log_line + 1024);
         free(log_line);
     }
     return 0;
