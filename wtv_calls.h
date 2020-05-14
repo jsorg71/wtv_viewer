@@ -15,7 +15,7 @@ struct wtv_info
     int sck;
     int pict_format_default;
     int gc;
-    int drawable_id;
+    unsigned int drawable_id;
     int drawable_width;
     int drawable_height;
     int ms_latency;
