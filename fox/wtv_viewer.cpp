@@ -14,354 +14,12 @@
 #include <xcb/xcb.h>
 #include <xcb/render.h>
 
-#include "parse.h"
 #include "wtv_calls.h"
 #include "wtv_picker.h"
+#include "wtv_fullscreen.h"
+#include "wtv_mainwindow.h"
 
 #define FRAME_MSTIME 33
-
-class FXMyWindow:public FXTopWindow
-{
-    FXDECLARE(FXMyWindow)
-public:
-    FXMyWindow();
-    FXMyWindow(FXWindow* p);
-    virtual ~FXMyWindow();
-    virtual bool doesOverrideRedirect() const;
-public:
-    struct wtv_info* m_wtv;
-    FXApp* m_app;
-    FXImage* m_image;
-    int m_image_width;
-    int m_image_height;
-public:
-    long onConfigure(FXObject* obj, FXSelector sel, void* ptr);
-    long onPaint(FXObject* obj, FXSelector sel, void* ptr);
-    long onLeftBtnPress(FXObject* obj, FXSelector sel, void* ptr);
-    long onLeftBtnRelease(FXObject* obj, FXSelector sel, void* ptr);
-};
-
-/*****************************************************************************/
-FXMyWindow::FXMyWindow()
-{
-    m_wtv = NULL;
-    m_app = NULL;
-    m_image = NULL;
-    m_image_width = 0;
-    m_image_height = 0;
-}
-
-/*****************************************************************************/
-FXMyWindow::FXMyWindow(FXWindow* p):
-            FXTopWindow(p, "full", NULL, NULL, 0, 10, 10, 10, 10,
-                        0, 0, 0, 0, 0, 0)
-{
-    m_wtv = NULL;
-    m_app = NULL;
-    m_image = NULL;
-    m_image_width = 0;
-    m_image_height = 0;
-    flags |= FLAG_ENABLED;
-}
-
-/*****************************************************************************/
-FXMyWindow::~FXMyWindow()
-{
-    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
-    if (m_image->id() == m_wtv->drawable_id)
-    {
-        m_wtv->drawable_id = 0;
-    }
-    delete m_image;
-}
-
-/*****************************************************************************/
-bool
-FXMyWindow::doesOverrideRedirect() const
-{
-    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
-    return true;
-}
-
-/*****************************************************************************/
-long
-FXMyWindow::onConfigure(FXObject* obj, FXSelector sel, void* ptr)
-{
-    int width;
-    int height;
-    FXDCWindow* dc;
-
-    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
-    FXTopWindow::onConfigure(obj, sel, ptr);
-    width = getWidth();
-    height = getHeight();
-    if ((width != m_image_width) || (height != m_image_height))
-    {
-        m_image_width = width;
-        m_image_height = height;
-        delete m_image;
-        m_image = new FXImage(m_app, NULL, 0, m_image_width, m_image_height);
-        m_image->create();
-        dc = new FXDCWindow(m_image);
-        dc->fillRectangle(0, 0, m_image_width, m_image_height);
-        delete dc;
-        if (m_wtv != NULL)
-        {
-            m_wtv->drawable_id = m_image->id();
-            m_wtv->drawable_width = m_image_width;
-            m_wtv->drawable_height = m_image_height;
-        }
-    }
-    return 1;
-}
-
-/*****************************************************************************/
-long
-FXMyWindow::onPaint(FXObject* obj, FXSelector sel, void* ptr)
-{
-    FXEvent* evt;
-    FXRegion* reg;
-    FXDCWindow* dc;
-
-    (void)obj;
-    (void)sel;
-
-    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
-    evt = (FXEvent*)ptr;
-    reg = new FXRegion(evt->rect.x, evt->rect.y, evt->rect.w, evt->rect.h);
-    if (!reg->empty())
-    {
-        dc = new FXDCWindow(this);
-        if (m_image != NULL)
-        {
-            dc->setClipRegion(*reg);
-            dc->drawImage(m_image, 0, 0);
-        }
-        delete dc;
-    }
-    delete reg;
-    return 1;
-}
-
-/*****************************************************************************/
-long
-FXMyWindow::onLeftBtnPress(FXObject* obj, FXSelector sel, void* ptr)
-{
-    (void)obj;
-    (void)sel;
-    (void)ptr;
-
-    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
-    return 1;
-}
-
-/*****************************************************************************/
-long
-FXMyWindow::onLeftBtnRelease(FXObject* obj, FXSelector sel, void* ptr)
-{
-    FXEvent* evt;
-
-    (void)obj;
-    (void)sel;
-
-    evt = (FXEvent*)ptr;
-    LOGLN10((m_wtv, LOG_INFO, LOGS "click_count %d", LOGP, evt->click_count));
-    if (evt->click_count > 1)
-    {
-        close(TRUE);
-    }
-    return 1;
-}
-
-FXDEFMAP(FXMyWindow) FXMyWindowMap[] =
-{
-    FXMAPFUNC(SEL_CONFIGURE, 0, FXMyWindow::onConfigure),
-    FXMAPFUNC(SEL_PAINT, 0, FXMyWindow::onPaint),
-    FXMAPFUNC(SEL_LEFTBUTTONPRESS, 0, FXMyWindow::onLeftBtnPress),
-    FXMAPFUNC(SEL_LEFTBUTTONRELEASE, 0, FXMyWindow::onLeftBtnRelease)
-};
-
-FXIMPLEMENT(FXMyWindow, FXWindow, FXMyWindowMap, ARRAYNUMBER(FXMyWindowMap))
-
-class FXMyMainWindow:public FXMainWindow
-{
-    FXDECLARE(FXMyMainWindow)
-public:
-    FXMyMainWindow();
-    FXMyMainWindow(FXApp* app);
-    virtual ~FXMyMainWindow();
-public:
-    struct wtv_info* m_wtv;
-    FXApp* m_app;
-    FXImage* m_image;
-    int m_image_width;
-    int m_image_height;
-    int m_left_offset;
-    int m_top_offset;
-    int m_right_offset;
-    int m_bottom_offset;
-public:
-    long onConfigure(FXObject* obj, FXSelector sel, void* ptr);
-    long onPaint(FXObject* obj, FXSelector sel, void* ptr);
-    long onLeftBtnPress(FXObject* obj, FXSelector sel, void* ptr);
-    long onLeftBtnRelease(FXObject* obj, FXSelector sel, void* ptr);
-};
-
-/*****************************************************************************/
-FXMyMainWindow::FXMyMainWindow()
-{
-    m_wtv = NULL;
-    m_app = NULL;
-    m_image = NULL;
-    m_image_width = 0;
-    m_image_height = 0;
-    m_left_offset = 0;
-    m_top_offset = 0;
-    m_right_offset = 0;
-    m_bottom_offset = 0;
-}
-
-/*****************************************************************************/
-FXMyMainWindow::FXMyMainWindow(FXApp* app):
-                FXMainWindow(app, "wtv_viewer", NULL, NULL, DECOR_ALL,
-                             0, 0, 640, 480)
-{
-    m_wtv = NULL;
-    m_app = app;
-    m_image = NULL;
-    m_image_width = 0;
-    m_image_height = 0;
-    m_left_offset = 0;
-    m_top_offset = 0;
-    m_right_offset = 0;
-    m_bottom_offset = 0;
-    flags |= FLAG_ENABLED;
-}
-
-/*****************************************************************************/
-FXMyMainWindow::~FXMyMainWindow()
-{
-    delete m_image;
-}
-
-/*****************************************************************************/
-long
-FXMyMainWindow::onConfigure(FXObject* obj, FXSelector sel, void* ptr)
-{
-    int width;
-    int height;
-    FXDCWindow* dc;
-
-    FXMainWindow::onConfigure(obj, sel, ptr);
-    width = getWidth() - m_left_offset - m_right_offset;
-    height = getHeight() - m_top_offset - m_bottom_offset;
-    if ((width != m_image_width) || (height != m_image_height))
-    {
-        m_image_width = width;
-        m_image_height = height;
-        delete m_image;
-        m_image = new FXImage(m_app, NULL, 0, m_image_width, m_image_height);
-        m_image->create();
-        dc = new FXDCWindow(m_image);
-        dc->fillRectangle(0, 0, m_image_width, m_image_height);
-        delete dc;
-        if (m_wtv != NULL)
-        {
-            m_wtv->drawable_id = m_image->id();
-            m_wtv->drawable_width = m_image_width;
-            m_wtv->drawable_height = m_image_height;
-        }
-    }
-    return 1;
-}
-
-/*****************************************************************************/
-long
-FXMyMainWindow::onPaint(FXObject* obj, FXSelector sel, void* ptr)
-{
-    FXEvent* evt;
-    FXRegion* reg;
-    FXRegion* image_reg;
-    FXDCWindow* dc;
-    int width;
-    int height;
-
-    (void)obj;
-    (void)sel;
-
-    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
-    evt = (FXEvent*)ptr;
-    reg = new FXRegion(evt->rect.x, evt->rect.y, evt->rect.w, evt->rect.h);
-    if (!reg->empty())
-    {
-        width = getWidth();
-        height = getHeight();
-        dc = new FXDCWindow(this);
-        if (m_image != NULL)
-        {
-            dc->setClipRegion(*reg);
-            image_reg = new FXRegion(m_left_offset, m_top_offset,
-                                     width - m_left_offset - m_right_offset,
-                                     height - m_top_offset - m_bottom_offset);
-            *reg -= *image_reg;
-            dc->drawImage(m_image, m_left_offset, m_top_offset);
-            delete image_reg;
-        }
-        if (!reg->empty())
-        {
-            dc->setClipRegion(*reg);
-            dc->setForeground(backColor);
-            dc->fillRectangle(0, 0, width, height);
-        }
-        delete dc;
-    }
-    delete reg;
-    return 1;
-}
-
-/*****************************************************************************/
-long
-FXMyMainWindow::onLeftBtnPress(FXObject* obj, FXSelector sel, void* ptr)
-{
-    (void)obj;
-    (void)sel;
-    (void)ptr;
-
-    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
-    return 1;
-}
-
-/*****************************************************************************/
-long
-FXMyMainWindow::onLeftBtnRelease(FXObject* obj, FXSelector sel, void* ptr)
-{
-    FXEvent* evt;
-
-    (void)obj;
-    (void)sel;
-
-    evt = (FXEvent*)ptr;
-    LOGLN10((m_wtv, LOG_INFO, LOGS "click_count %d", LOGP, evt->click_count));
-    if (evt->click_count > 1)
-    {
-        if (target != NULL)
-        {
-            target->tryHandle(this, FXSEL(SEL_COMMAND, message), NULL);
-        }
-    }
-    return 1;
-}
-
-FXDEFMAP(FXMyMainWindow) FXMyMainWindowMap[] =
-{
-    FXMAPFUNC(SEL_CONFIGURE, 0, FXMyMainWindow::onConfigure),
-    FXMAPFUNC(SEL_PAINT, 0, FXMyMainWindow::onPaint),
-    FXMAPFUNC(SEL_LEFTBUTTONPRESS, 0, FXMyMainWindow::onLeftBtnPress),
-    FXMAPFUNC(SEL_LEFTBUTTONRELEASE, 0, FXMyMainWindow::onLeftBtnRelease)
-};
-
-FXIMPLEMENT(FXMyMainWindow, FXMainWindow, FXMyMainWindowMap,
-            ARRAYNUMBER(FXMyMainWindowMap))
 
 class GUIObject:public FXObject
 {
@@ -378,7 +36,7 @@ public:
 public:
     struct wtv_info* m_wtv;
     FXApp* m_app;
-    FXMyMainWindow* m_mw;
+    FXWTVMainWindow* m_mw;
     FXDockSite* m_topdock;
     FXToolBarShell* m_tbs;
     FXMenuBar* m_mb;
@@ -387,7 +45,7 @@ public:
     FXStatusBar* m_sb;
     FXLabel* m_sbl1;
     xcb_connection_t* xcb;
-    FXMyWindow* m_fullscreen;
+    FXFullScreenWindow* m_fullscreen;
 public:
     long onEventRead(FXObject* obj, FXSelector sel, void* ptr);
     long onEventWrite(FXObject* obj, FXSelector sel, void* ptr);
@@ -422,6 +80,14 @@ GUIObject::GUIObject():FXObject()
     m_wtv = NULL;
     m_app = NULL;
     m_mw = NULL;
+    m_topdock = NULL;
+    m_tbs = NULL;
+    m_mb = NULL;
+    m_filemenu = NULL;
+    m_helpmenu = NULL;
+    m_sb = NULL;
+    m_sbl1 = NULL;
+    xcb = NULL;
     m_fullscreen = NULL;
 }
 
@@ -437,7 +103,7 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
     cur = new FXCursor(m_app, FX::CURSOR_ARROW);
     m_app->setDefaultCursor(DEF_RARROW_CURSOR, cur);
     m_app->init(argc, argv);
-    m_mw = new FXMyMainWindow(m_app);
+    m_mw = new FXWTVMainWindow(m_app);
     m_mw->setTarget(this);
     m_mw->setSelector(GUIObject::ID_MAINWINDOW);
     m_mw->m_wtv = wtv;
@@ -480,6 +146,7 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
     m_mw->m_right_offset = 4;
     m_mw->m_bottom_offset = m_sb->getHeight() + 4;
     m_app->addTimeout(this, GUIObject::ID_STARTUP, 100, NULL);
+    xcb = NULL;
     m_fullscreen = NULL;
 }
 
@@ -725,18 +392,20 @@ GUIObject::onCmdFullscreenToggle(FXObject* obj, FXSelector sel, void* ptr)
     {
         m_fullscreen->close(TRUE);
         m_fullscreen = NULL;
+        m_mw->setFocus();
         m_wtv->drawable_id = m_mw->m_image->id();
         m_wtv->drawable_width = m_mw->m_image_width;
         m_wtv->drawable_height = m_mw->m_image_height;
         return 1;
     }
-    m_fullscreen = new FXMyWindow(m_mw);
+    m_fullscreen = new FXFullScreenWindow(m_mw);
     m_fullscreen->setTarget(this);
     m_fullscreen->setSelector(GUIObject::ID_FULLSCREEN_CLOSE);
     m_fullscreen->m_app = m_app;
     m_fullscreen->m_wtv = m_wtv;
     m_fullscreen->create();
     m_fullscreen->show();
+    m_fullscreen->setFocus();
     rootWindow = m_app->getRootWindow();
     m_fullscreen->position(0, 0, rootWindow->getWidth(),
                            rootWindow->getHeight());
@@ -755,6 +424,7 @@ GUIObject::onFullscreenClose(FXObject* obj, FXSelector sel, void* ptr)
     if (m_fullscreen != NULL)
     {
         m_fullscreen = NULL;
+        m_mw->setFocus();
         m_wtv->drawable_id = m_mw->m_image->id();
         m_wtv->drawable_width = m_mw->m_image_width;
         m_wtv->drawable_height = m_mw->m_image_height;

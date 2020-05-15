@@ -1,5 +1,5 @@
 
-OBJS=wtv_viewer.o wtv_picker.o
+OBJS=wtv_viewer.o wtv_picker.o wtv_fullscreen.o wtv_mainwindow.o
 
 FOX_CFLAGS=$(shell fox-config --cflags)
 FOX_LIBS=$(shell fox-config --libs)
