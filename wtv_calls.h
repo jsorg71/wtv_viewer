@@ -34,6 +34,8 @@ wtv_start(struct wtv_info* winfo);
 int
 wtv_stop(struct wtv_info* winfo);
 int
+wtv_exit(struct wtv_info* winfo);
+int
 wtv_request_frame(struct wtv_info* winfo);
 int
 wtv_read(struct wtv_info* winfo);

@@ -153,6 +153,7 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
 /*****************************************************************************/
 GUIObject::~GUIObject()
 {
+    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     delete m_app;
 }
 
@@ -287,7 +288,7 @@ GUIObject::onStatsTimeout(FXObject* obj, FXSelector sel, void* ptr)
     (void)sel;
     (void)ptr;
 
-    LOGLN0((m_wtv, LOG_INFO, LOGS, LOGP));
+    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
     wtv_print_stats(m_wtv);
     m_app->addTimeout(this, GUIObject::ID_STATS, 60000, NULL);
     return 1;
@@ -533,6 +534,7 @@ gui_delete(struct wtv_info* wtv)
     {
         close(wtv->sck);
     }
+    wtv_exit(wtv);
     free(wtv);
     return 0;
 }

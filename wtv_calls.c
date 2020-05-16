@@ -170,7 +170,7 @@ wtv_process_msg_audio(struct wtv_info* winfo)
     }
     if (winfo->pa != NULL)
     {
-        if (winfo->audio_bytes < 32 * 1024)
+        if (winfo->audio_bytes < 1)
         {
             audio_s = calloc(1, sizeof(struct stream));
             audio_s->size = bytes;
@@ -191,12 +191,12 @@ wtv_process_msg_audio(struct wtv_info* winfo)
                 winfo->audio_tail = audio_s;
             }
             winfo->audio_bytes += bytes;
-            wtv_check_audio(winfo);
         }
         else
         {
             LOGLN0((winfo, LOG_INFO, LOGS "dropping audio data", LOGP));
         }
+        wtv_check_audio(winfo);
     }
     return 0;
 }
@@ -341,51 +341,12 @@ wtv_process_msg(struct wtv_info* winfo)
 }
 
 /*****************************************************************************/
-const char *
-get_filename(char* filename, int bytes)
-{
-    DIR * ldir;
-    struct dirent * entry;
-    int count;
-
-    count = 0;
-    ldir = opendir("/tmp");
-    if (ldir != NULL)
-    {
-        entry = readdir(ldir);
-        while (entry != NULL)
-        {
-            if (strncmp(entry->d_name, "wtv_", 3) == 0)
-            {
-                if (entry->d_type == DT_SOCK)
-                {
-                    wtv_snprintf(filename, bytes, "/tmp/%s", entry->d_name);
-                    count++;
-                }
-            }
-            entry = readdir(ldir);
-        }
-        closedir(ldir);
-    }
-    if (count == 1)
-    {
-        return filename;
-    }
-    return NULL;
-}
-
-/*****************************************************************************/
 int
 wtv_connect_to_uds(struct wtv_info* winfo, const char* filename)
 {
     struct sockaddr_un s;
     int sck;
-    char lfilename[256];
 
-    if (filename == NULL)
-    {
-        filename = get_filename(lfilename, 255);
-    }
     if (filename == NULL)
     {
         return -1;
@@ -437,6 +398,7 @@ wtv_stop(struct wtv_info* winfo)
     struct stream* s;
     struct stream* s1;
 
+    LOGLN10((winfo, LOG_INFO, LOGS, LOGP));
     s = winfo->out_s_head;
     while (s != NULL)
     {
@@ -476,6 +438,16 @@ wtv_stop(struct wtv_info* winfo)
         free(winfo->in_s);
         winfo->in_s = NULL;
     }
+    return 0;
+}
+
+/*****************************************************************************/
+int
+wtv_exit(struct wtv_info* winfo)
+{
+    wtv_stop(winfo);
+    wtv_pa_delete(winfo->pa);
+    winfo->pa = NULL;
     return 0;
 }
 
@@ -573,14 +545,11 @@ wtv_write(struct wtv_info* winfo)
         if (sent < 1)
         {
             /* error */
-            //LOGLN0((LOG_ERROR, LOGS "failed failed", LOGP));
-            //hdhrd_peer_remove_one(hdhrd, &peer, &last_peer);
-            //continue;
             return 1;
         }
         else
         {
-            //LOGLN10((LOG_DEBUG, LOGS "send ok, sent %d", LOGP, sent));
+            LOGLN10((LOG_DEBUG, LOGS "send ok, sent %d", LOGP, sent));
             out_s->p += sent;
             if (out_s->p >= out_s->end)
             {
@@ -622,8 +591,11 @@ get_mstime(int* mstime)
 int
 wtv_print_stats(struct wtv_info* winfo)
 {
-    wtv_pa_print_stats(winfo->pa);
-    LOGLN0((winfo, LOG_INFO, LOGS "audio_bytes %d", LOGP, winfo->audio_bytes));
+    int latency;
+
+    wtv_pa_get_latency(winfo->pa, &latency);
+    LOGLN0((winfo, LOG_INFO, LOGS "left over audio_bytes %d pa latency %d",
+            LOGP, winfo->audio_bytes, latency));
     return 0;
 }
 
