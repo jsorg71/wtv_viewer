@@ -46,6 +46,17 @@ wtv_fd_to_drawable(struct wtv_info* wtv, int fd, int fd_width, int fd_height,
                                          fd_stride, 24, 32, fd);
     xcb_error = xcb_request_check(xcb, cookie);
     free(xcb_error);
+    if ((fd_width == wtv->drawable_width) &&
+        (fd_height == wtv->drawable_height))
+    {
+        /* fast path, do not need to resize */
+        LOGLN10((wtv, LOG_INFO, LOGS "no resize", LOGP));
+        xcb_copy_area(xcb, pixmap, wtv->drawable_id, wtv->gc, 0, 0, 0, 0,
+                      fd_width, fd_height);
+        xcb_free_pixmap(xcb, pixmap);
+        return 0;
+    }
+    /* need to resize */
     src_picture = xcb_generate_id(xcb);
     xcb_render_create_picture(xcb, src_picture, pixmap,
                               wtv->pict_format_default, 0, NULL);
