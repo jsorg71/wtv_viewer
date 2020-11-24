@@ -47,6 +47,9 @@ public:
     xcb_connection_t* xcb;
     FXFullScreenWindow* m_fullscreen;
     FXSlider* m_slider;
+    bool m_muted;
+    int m_saved_volume;
+;
 public:
     long onEventRead(FXObject* obj, FXSelector sel, void* ptr);
     long onEventWrite(FXObject* obj, FXSelector sel, void* ptr);
@@ -58,6 +61,7 @@ public:
     long onCmdFullscreenToggle(FXObject* obj, FXSelector sel, void* ptr);
     long onFullscreenClose(FXObject* obj, FXSelector sel, void* ptr);
     long onVolumeChange(FXObject* obj, FXSelector sel, void* ptr);
+    long onVolumeMute(FXObject* obj, FXSelector sel, void* ptr);
     enum _ids
     {
         ID_MAINWINDOW = 1,
@@ -73,6 +77,7 @@ public:
         ID_HELP,
         ID_ABOUT,
         ID_VOLUME_SLIDER,
+        ID_VOL_MUTE,
         ID_LAST
     };
 };
@@ -92,6 +97,9 @@ GUIObject::GUIObject():FXObject()
     m_sbl1 = NULL;
     xcb = NULL;
     m_fullscreen = NULL;
+    m_slider = NULL;
+    m_muted = FALSE;
+    m_saved_volume = 0;
 }
 
 /*****************************************************************************/
@@ -143,12 +151,15 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
     /* volume text */
     flags = LAYOUT_CENTER_Y;
     m_sbl1 = new FXLabel(m_sb, "volume: 100%", NULL, flags);
+    m_sbl1->setTarget(this);
+    m_sbl1->setSelector(GUIObject::ID_VOL_MUTE);
     /* volume slider */
     sel = GUIObject::ID_VOLUME_SLIDER;
-    flags = SLIDER_NORMAL | LAYOUT_FILL_X | LAYOUT_CENTER_Y | LAYOUT_RIGHT;
+    flags = SLIDER_NORMAL | LAYOUT_FILL_X | LAYOUT_FILL_Y | LAYOUT_RIGHT;
     m_slider = new FXSlider(m_sb, this, sel, flags);
     m_slider->setRange(0, 100, FALSE);
     m_slider->setValue(100, FALSE);
+    m_slider->setIncrement(10);
     m_app->create();
     m_mw->show(PLACEMENT_SCREEN);
     /* set the video image offsets */
@@ -159,6 +170,8 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
     m_app->addTimeout(this, GUIObject::ID_STARTUP, 100, NULL);
     xcb = NULL;
     m_fullscreen = NULL;
+    m_muted = FALSE;
+    m_saved_volume = 0;
 }
 
 /*****************************************************************************/
@@ -454,11 +467,34 @@ GUIObject::onVolumeChange(FXObject* obj, FXSelector sel, void* ptr)
     (void)obj;
     (void)sel;
 
-    volume = (FXint)(long)ptr;
+    volume = (FXint)(FXival)ptr;
     LOGLN10((m_wtv, LOG_INFO, LOGS "volume %d", LOGP, volume));
     m_wtv->volume = volume;
     text.format("volume: %3.3d%%", volume);
     m_sbl1->setText(text);
+    return 1;
+}
+
+/*****************************************************************************/
+long
+GUIObject::onVolumeMute(FXObject* obj, FXSelector sel, void* ptr)
+{
+    (void)obj;
+    (void)sel;
+    (void)ptr;
+
+    LOGLN10((m_wtv, LOG_INFO, LOGS, LOGP));
+    if (m_muted)
+    {
+        m_muted = FALSE;
+        m_slider->setValue(m_saved_volume, TRUE);
+    }
+    else
+    {
+        m_muted = TRUE;
+        m_saved_volume = m_slider->getValue();
+        m_slider->setValue(0, TRUE);
+    }
     return 1;
 }
 
@@ -478,7 +514,11 @@ FXDEFMAP(GUIObject) GUIObjectMap[] =
     FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_STATS, GUIObject::onStatsTimeout),
     FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_STARTUP, GUIObject::onStartupTimeout),
     FXMAPFUNC(SEL_CHANGED, GUIObject::ID_VOLUME_SLIDER,
-                                               GUIObject::onVolumeChange)
+                                               GUIObject::onVolumeChange),
+    FXMAPFUNC(SEL_COMMAND, GUIObject::ID_VOLUME_SLIDER,
+                                               GUIObject::onVolumeChange),
+    FXMAPFUNC(SEL_LEFTBUTTONRELEASE, GUIObject::ID_VOL_MUTE,
+                                               GUIObject::onVolumeMute)
 };
 
 FXIMPLEMENT(GUIObject, FXObject, GUIObjectMap, ARRAYNUMBER(GUIObjectMap))
