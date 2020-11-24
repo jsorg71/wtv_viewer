@@ -20,6 +20,7 @@ struct wtv_info
     int drawable_height;
     int ms_latency;
     int is_audio_playing;
+    int volume; /* 0 - 100 */
     void* xcb;
 };
 

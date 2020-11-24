@@ -115,6 +115,21 @@ wtv_check_audio(struct wtv_info* winfo)
 
 /*****************************************************************************/
 static int
+adjust_audio_volume_s16le(void* audio_data, int samples, int volume)
+{
+    int index;
+    short* s16;
+
+    s16 = (short*)audio_data;
+    for (index = 0; index < samples; index++)
+    {
+        s16[index] = (s16[index] * volume + 50) / 100;
+    }
+    return 0;
+}
+
+/*****************************************************************************/
+static int
 wtv_process_msg_audio(struct wtv_info* winfo)
 {
     int channels;
@@ -177,6 +192,11 @@ wtv_process_msg_audio(struct wtv_info* winfo)
             audio_s->data = (char*)malloc(audio_s->size);
             audio_s->p = audio_s->data;
             out_uint8p(audio_s, in_s->p, bytes);
+            if (winfo->volume != 100)
+            {
+                adjust_audio_volume_s16le(audio_s->data, bytes / 2,
+                                          winfo->volume);
+            }
             audio_s->end = audio_s->p;
             audio_s->p = audio_s->data;
 

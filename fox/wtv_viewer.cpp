@@ -46,6 +46,7 @@ public:
     FXLabel* m_sbl1;
     xcb_connection_t* xcb;
     FXFullScreenWindow* m_fullscreen;
+    FXSlider* m_slider;
 public:
     long onEventRead(FXObject* obj, FXSelector sel, void* ptr);
     long onEventWrite(FXObject* obj, FXSelector sel, void* ptr);
@@ -56,6 +57,7 @@ public:
     long onCmdOpen(FXObject* obj, FXSelector sel, void* ptr);
     long onCmdFullscreenToggle(FXObject* obj, FXSelector sel, void* ptr);
     long onFullscreenClose(FXObject* obj, FXSelector sel, void* ptr);
+    long onVolumeChange(FXObject* obj, FXSelector sel, void* ptr);
     enum _ids
     {
         ID_MAINWINDOW = 1,
@@ -70,6 +72,7 @@ public:
         ID_EXIT,
         ID_HELP,
         ID_ABOUT,
+        ID_VOLUME_SLIDER,
         ID_LAST
     };
 };
@@ -137,7 +140,15 @@ GUIObject::GUIObject(int argc, char** argv, struct wtv_info* wtv):FXObject()
     flags = LAYOUT_SIDE_BOTTOM | LAYOUT_FILL_X | STATUSBAR_WITH_DRAGCORNER |
             FRAME_RAISED;
     m_sb = new FXStatusBar(m_mw, flags);
-    m_sbl1 = new FXLabel(m_sb, "", NULL, LAYOUT_RIGHT | LAYOUT_CENTER_Y);
+    /* volume text */
+    flags = LAYOUT_CENTER_Y;
+    m_sbl1 = new FXLabel(m_sb, "volume: 100%", NULL, flags);
+    /* volume slider */
+    sel = GUIObject::ID_VOLUME_SLIDER;
+    flags = SLIDER_NORMAL | LAYOUT_FILL_X | LAYOUT_CENTER_Y | LAYOUT_RIGHT;
+    m_slider = new FXSlider(m_sb, this, sel, flags);
+    m_slider->setRange(0, 100, FALSE);
+    m_slider->setValue(100, FALSE);
     m_app->create();
     m_mw->show(PLACEMENT_SCREEN);
     /* set the video image offsets */
@@ -433,6 +444,24 @@ GUIObject::onFullscreenClose(FXObject* obj, FXSelector sel, void* ptr)
     return 0; /* allow close */
 }
 
+/*****************************************************************************/
+long
+GUIObject::onVolumeChange(FXObject* obj, FXSelector sel, void* ptr)
+{
+    FXint volume;
+    FXString text;
+
+    (void)obj;
+    (void)sel;
+
+    volume = (FXint)(long)ptr;
+    LOGLN10((m_wtv, LOG_INFO, LOGS "volume %d", LOGP, volume));
+    m_wtv->volume = volume;
+    text.format("volume: %3.3d%%", volume);
+    m_sbl1->setText(text);
+    return 1;
+}
+
 FXDEFMAP(GUIObject) GUIObjectMap[] =
 {
     FXMAPFUNC(SEL_COMMAND, GUIObject::ID_OPEN, GUIObject::onCmdOpen),
@@ -447,7 +476,9 @@ FXDEFMAP(GUIObject) GUIObjectMap[] =
     FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_FRAME, GUIObject::onFrameTimeout),
     FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_AUDIO, GUIObject::onAudioTimeout),
     FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_STATS, GUIObject::onStatsTimeout),
-    FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_STARTUP, GUIObject::onStartupTimeout)
+    FXMAPFUNC(SEL_TIMEOUT, GUIObject::ID_STARTUP, GUIObject::onStartupTimeout),
+    FXMAPFUNC(SEL_CHANGED, GUIObject::ID_VOLUME_SLIDER,
+                                               GUIObject::onVolumeChange)
 };
 
 FXIMPLEMENT(GUIObject, FXObject, GUIObjectMap, ARRAYNUMBER(GUIObjectMap))
@@ -493,6 +524,7 @@ gui_create(int argc, char** argv, struct wtv_info** wtv)
     xcb_render_query_pict_formats_cookie_t cookie;
 
     *wtv = (struct wtv_info*)calloc(1, sizeof(struct wtv_info));
+    (*wtv)->volume = 100;
     go = new GUIObject(argc, argv, *wtv);
     (*wtv)->gui_obj = go;
     xcb = XGetXCBConnection((Display*)(go->m_app->getDisplay()));
