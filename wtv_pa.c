@@ -276,7 +276,7 @@ wtv_pa_start(void* handle, const char* name, int ms_latency, int format)
         pa_threaded_mainloop_unlock(self->pa_mainloop);
         return 4;
     }
-    while (1)
+    for (;;)
     {
         state = pa_stream_get_state(self->pa_stream);
         if (state == PA_STREAM_READY)

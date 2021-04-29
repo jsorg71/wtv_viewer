@@ -165,6 +165,10 @@ wtv_process_msg_audio(struct wtv_info* winfo)
             LOGLN0((winfo, LOG_ERROR, LOGS "wtv_pa_start failed", LOGP));
             return 4;
         }
+        if (wtv_pa_set_volume(winfo->pa, winfo->volume) != 0)
+        {
+            LOGLN0((winfo, LOG_ERROR, LOGS "wtv_pa_set_volume failed", LOGP));
+        }
         LOGLN0((winfo, LOG_INFO, LOGS "audio started", LOGP));
         winfo->is_audio_playing = 1;
     }
