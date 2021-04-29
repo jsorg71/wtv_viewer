@@ -671,10 +671,15 @@ logln(struct wtv_info* winfo, int log_level, const char* format, ...)
 int
 wtv_set_volume(struct wtv_info* winfo)
 {
+    int error;
+
     LOGLN10((winfo, LOG_INFO, LOGS "volume %d", LOGP, winfo->volume));
-    if (wtv_pa_set_volume(winfo->pa, winfo->volume) != 0)
+    error = wtv_pa_set_volume(winfo->pa, winfo->volume);
+    if (error != 0)
     {
-        LOGLN0((winfo, LOG_ERROR, LOGS "wtv_pa_set_volume failed", LOGP));
+        LOGLN0((winfo, LOG_ERROR, LOGS "wtv_pa_set_volume failed error %d",
+                LOGP, error));
+        return error;
     }
     return 0;
 }

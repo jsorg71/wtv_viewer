@@ -470,20 +470,24 @@ wtv_pa_set_volume(void* handle, int volume)
     self = (struct wtv_pa*)handle;
     if (self == NULL)
     {
-        return 0;
+        return 1;
     }
     if ((self->pa_mainloop == NULL) || (self->pa_stream == NULL) ||
         (self->pa_context == NULL) || (self->channels < 1))
     {
-        return 0;
+        return 1;
+    }
+    if ((volume < 0) || (volume > 100))
+    {
+        return 1;
     }
     rv = 1;
     pa_threaded_mainloop_lock(self->pa_mainloop);
     index = pa_stream_get_index(self->pa_stream);
     if (index != PA_INVALID_INDEX)
     {
-        mute_op = pa_context_set_sink_input_mute(self->pa_context, index, !volume,
-                                                 NULL, NULL);
+        mute_op = pa_context_set_sink_input_mute(self->pa_context, index,
+                                                 !volume, NULL, NULL);
         if (mute_op != NULL)
         {
             memset(&cvol, 0, sizeof(cvol));
