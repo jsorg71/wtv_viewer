@@ -44,6 +44,8 @@ wtv_pa_play_non_blocking(void* handle, void* data, int data_bytes,
                          int* data_bytes_processed);
 int
 wtv_pa_get_latency(void* handle, int* latency);
+int
+wtv_pa_set_volume(void* handle, int volume);
 
 #ifdef __cplusplus
 }

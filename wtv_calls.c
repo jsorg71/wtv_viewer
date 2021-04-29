@@ -115,21 +115,6 @@ wtv_check_audio(struct wtv_info* winfo)
 
 /*****************************************************************************/
 static int
-adjust_audio_volume_s16le(void* audio_data, int samples, int volume)
-{
-    int index;
-    short* s16;
-
-    s16 = (short*)audio_data;
-    for (index = 0; index < samples; index++)
-    {
-        s16[index] = (s16[index] * volume + 50) / 100;
-    }
-    return 0;
-}
-
-/*****************************************************************************/
-static int
 wtv_process_msg_audio(struct wtv_info* winfo)
 {
     int channels;
@@ -163,25 +148,25 @@ wtv_process_msg_audio(struct wtv_info* winfo)
              winfo->is_audio_playing));
     if (winfo->is_audio_playing == 0)
     {
-            format = CAP_PA_FORMAT_48000_6CH_16LE;
-            switch (channels)
-            {
-                case 1:
-                    format = CAP_PA_FORMAT_48000_1CH_16LE;
-                    break;
-                case 2:
-                    format = CAP_PA_FORMAT_48000_2CH_16LE;
-                    break;
-            }
-            LOGLN0((winfo, LOG_INFO, LOGS "starting audio", LOGP));
-            if (wtv_pa_start(winfo->pa, "wtv_viewer", winfo->ms_latency,
-                             format) != 0)
-            {
-                LOGLN0((winfo, LOG_ERROR, LOGS "wtv_pa_start failed", LOGP));
-                return 4;
-            }
-            LOGLN0((winfo, LOG_INFO, LOGS "audio started", LOGP));
-            winfo->is_audio_playing = 1;
+        format = CAP_PA_FORMAT_48000_6CH_16LE;
+        switch (channels)
+        {
+            case 1:
+                format = CAP_PA_FORMAT_48000_1CH_16LE;
+                break;
+            case 2:
+                format = CAP_PA_FORMAT_48000_2CH_16LE;
+                break;
+        }
+        LOGLN0((winfo, LOG_INFO, LOGS "starting audio", LOGP));
+        if (wtv_pa_start(winfo->pa, "wtv_viewer", winfo->ms_latency,
+                         format) != 0)
+        {
+            LOGLN0((winfo, LOG_ERROR, LOGS "wtv_pa_start failed", LOGP));
+            return 4;
+        }
+        LOGLN0((winfo, LOG_INFO, LOGS "audio started", LOGP));
+        winfo->is_audio_playing = 1;
     }
     if (winfo->pa != NULL)
     {
@@ -192,11 +177,6 @@ wtv_process_msg_audio(struct wtv_info* winfo)
             audio_s->data = (char*)malloc(audio_s->size);
             audio_s->p = audio_s->data;
             out_uint8p(audio_s, in_s->p, bytes);
-            if (winfo->volume != 100)
-            {
-                adjust_audio_volume_s16le(audio_s->data, bytes / 2,
-                                          winfo->volume);
-            }
             audio_s->end = audio_s->p;
             audio_s->p = audio_s->data;
 
@@ -683,6 +663,18 @@ logln(struct wtv_info* winfo, int log_level, const char* format, ...)
                      mstime, g_log_pre[log_level % 4], log_line);
         wtv_gui_writeln(winfo, log_line + 1024);
         free(log_line);
+    }
+    return 0;
+}
+
+/*****************************************************************************/
+int
+wtv_set_volume(struct wtv_info* winfo)
+{
+    LOGLN10((winfo, LOG_INFO, LOGS "volume %d", LOGP, winfo->volume));
+    if (wtv_pa_set_volume(winfo->pa, winfo->volume) != 0)
+    {
+        LOGLN0((winfo, LOG_ERROR, LOGS "wtv_pa_set_volume failed", LOGP));
     }
     return 0;
 }

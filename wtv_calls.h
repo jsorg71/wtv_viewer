@@ -54,6 +54,8 @@ int
 wtv_vsnprintf(char* buffer, size_t count, const char *format, va_list ap);
 int
 logln(struct wtv_info* winfo, int log_level, const char* format, ...);
+int
+wtv_set_volume(struct wtv_info* winfo);
 
 /* in gui */
 int

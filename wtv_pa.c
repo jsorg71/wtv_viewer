@@ -29,6 +29,8 @@ struct wtv_pa
     pa_threaded_mainloop* pa_mainloop;
     pa_context* pa_context;
     pa_stream* pa_stream;
+    int channels;
+    int pad;
 };
 
 /******************************************************************************/
@@ -197,16 +199,19 @@ wtv_pa_start(void* handle, const char* name, int ms_latency, int format)
         case CAP_PA_FORMAT_48000_1CH_16LE:
             sample_spec.rate = 48000;
             sample_spec.channels = 1;
+            self->channels = 1;
             sample_spec.format = PA_SAMPLE_S16LE;
             break;
         case CAP_PA_FORMAT_48000_2CH_16LE:
             sample_spec.rate = 48000;
             sample_spec.channels = 2;
+            self->channels = 2;
             sample_spec.format = PA_SAMPLE_S16LE;
             break;
         case CAP_PA_FORMAT_48000_6CH_16LE:
             sample_spec.rate = 48000;
             sample_spec.channels = 6;
+            self->channels = 6;
             sample_spec.format = PA_SAMPLE_S16LE;
             memset(&channel_map, 0, sizeof(channel_map));
             channel_map_p = &channel_map;
@@ -447,5 +452,56 @@ wtv_pa_get_latency(void* handle, int* latency)
         }
     }
     return 1;
+}
+
+/******************************************************************************/
+int
+wtv_pa_set_volume(void* handle, int volume)
+{
+    struct wtv_pa* self;
+    pa_cvolume cvol;
+    pa_operation* mute_op;
+    pa_operation* vol_op;
+    pa_volume_t vol;
+    uint32_t index;
+    double dvol;
+    int rv;
+
+    self = (struct wtv_pa*)handle;
+    if (self == NULL)
+    {
+        return 0;
+    }
+    if ((self->pa_mainloop == NULL) || (self->pa_stream == NULL) ||
+        (self->pa_context == NULL) || (self->channels < 1))
+    {
+        return 0;
+    }
+    rv = 1;
+    pa_threaded_mainloop_lock(self->pa_mainloop);
+    index = pa_stream_get_index(self->pa_stream);
+    if (index != PA_INVALID_INDEX)
+    {
+        mute_op = pa_context_set_sink_input_mute(self->pa_context, index, !volume,
+                                                 NULL, NULL);
+        if (mute_op != NULL)
+        {
+            memset(&cvol, 0, sizeof(cvol));
+            dvol = volume;
+            dvol /= 100.0;
+            vol = pa_sw_volume_from_linear(dvol);
+            pa_cvolume_set(&cvol, self->channels, vol);
+            vol_op = pa_context_set_sink_input_volume(self->pa_context, index,
+                                                      &cvol, NULL, NULL);
+            if (vol_op != NULL)
+            {
+                rv = 0;
+                pa_operation_unref(vol_op);
+            }
+            pa_operation_unref(mute_op);
+        }
+    }
+    pa_threaded_mainloop_unlock(self->pa_mainloop);
+    return rv;
 }
 

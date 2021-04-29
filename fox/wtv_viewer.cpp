@@ -472,6 +472,7 @@ GUIObject::onVolumeChange(FXObject* obj, FXSelector sel, void* ptr)
     m_wtv->volume = volume;
     text.format("volume: %3.3d%%", volume);
     m_sbl1->setText(text);
+    wtv_set_volume(m_wtv);
     return 1;
 }
 
