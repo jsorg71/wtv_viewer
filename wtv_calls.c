@@ -174,16 +174,26 @@ wtv_process_msg_audio(struct wtv_info* winfo)
     }
     if (winfo->pa != NULL)
     {
-        if (winfo->audio_bytes < 1)
+        if (winfo->audio_bytes < channels * 16 * 1024)
         {
-            audio_s = calloc(1, sizeof(struct stream));
+            audio_s = (struct stream*)calloc(1, sizeof(struct stream));
+            if (audio_s == NULL)
+            {
+                LOGLN0((winfo, LOG_ERROR, LOGS "calloc failed", LOGP));
+                return 5;
+            }
             audio_s->size = bytes;
             audio_s->data = (char*)malloc(audio_s->size);
+            if (audio_s->data == NULL)
+            {
+                LOGLN0((winfo, LOG_ERROR, LOGS "malloc failed", LOGP));
+                free(audio_s);
+                return 6;
+            }
             audio_s->p = audio_s->data;
             out_uint8p(audio_s, in_s->p, bytes);
             audio_s->end = audio_s->p;
             audio_s->p = audio_s->data;
-
             if (winfo->audio_tail == NULL)
             {
                 winfo->audio_head = audio_s;
@@ -198,7 +208,8 @@ wtv_process_msg_audio(struct wtv_info* winfo)
         }
         else
         {
-            LOGLN0((winfo, LOG_INFO, LOGS "dropping audio data", LOGP));
+            LOGLN0((winfo, LOG_INFO, LOGS "dropping audio data audio_bytes %d",
+                    LOGP, winfo->audio_bytes));
         }
         wtv_check_audio(winfo);
     }
@@ -207,19 +218,15 @@ wtv_process_msg_audio(struct wtv_info* winfo)
 
 /*****************************************************************************/
 int
-read_fd(int sck, int *fd)
+read_fd(int sck, int* fd)
 {
     ssize_t size;
     struct msghdr msg;
     struct iovec iov;
-    union
-    {
-        struct cmsghdr cmsghdr;
-        char control[CMSG_SPACE(sizeof (int))];
-    } cmsgu;
-    struct cmsghdr *cmsg;
+    char control[CMSG_SPACE(sizeof(int))];
+    struct cmsghdr* cmsg;
     char text[4];
-    int *fds;
+    int* fds;
 
     iov.iov_base = text;
     iov.iov_len = 4;
@@ -227,27 +234,27 @@ read_fd(int sck, int *fd)
     msg.msg_namelen = 0;
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;
-    msg.msg_control = cmsgu.control;
-    msg.msg_controllen = sizeof(cmsgu.control);
+    msg.msg_control = control;
+    msg.msg_controllen = sizeof(control);
     size = recvmsg(sck, &msg, 0);
-    if (size < 4)
+    if (size == 4)
     {
-        return 1;
-    }
-    cmsg = CMSG_FIRSTHDR(&msg);
-    if (cmsg && cmsg->cmsg_len == CMSG_LEN(sizeof(int)))
-    {
-        if (cmsg->cmsg_level != SOL_SOCKET)
+        cmsg = CMSG_FIRSTHDR(&msg);
+        if (cmsg != NULL)
         {
-            return 1;
+            if (cmsg->cmsg_len == CMSG_LEN(sizeof(int)))
+            {
+                if (cmsg->cmsg_level == SOL_SOCKET)
+                {
+                    if (cmsg->cmsg_type == SCM_RIGHTS)
+                    {
+                        fds = (int*)CMSG_DATA(cmsg);
+                        *fd = *fds;
+                        return 0;
+                    }
+                }
+            }
         }
-        if (cmsg->cmsg_type != SCM_RIGHTS)
-        {
-            return 1;
-        }
-        fds = (int *) CMSG_DATA(cmsg);
-        *fd = *fds;
-        return 0;
     }
     return 1;
 }
