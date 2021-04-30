@@ -81,7 +81,9 @@ wtv_gui_draw_drawable(struct wtv_info* winfo);
 #define LOG_PRE
 #endif
 
+#if !defined(LOG_LEVEL)
 #define LOG_LEVEL 1
+#endif
 #if LOG_LEVEL > 0
 #define LOGLN0(_args) do { LOG_PRE logln _args ; } while (0)
 #else
