@@ -53,7 +53,7 @@ wtv_snprintf(char* buffer, size_t count, const char *format, ...);
 int
 wtv_vsnprintf(char* buffer, size_t count, const char *format, va_list ap);
 int
-logln(struct wtv_info* winfo, int log_level, const char* format, ...);
+wtv_logln(struct wtv_info* winfo, int log_level, const char* format, ...);
 int
 wtv_set_volume(struct wtv_info* winfo);
 
@@ -85,15 +85,18 @@ wtv_gui_draw_drawable(struct wtv_info* winfo);
 #define LOG_LEVEL 1
 #endif
 #if LOG_LEVEL > 0
-#define LOGLN0(_args) do { LOG_PRE logln _args ; } while (0)
+#define LOGLN0(_args) do { LOG_PRE wtv_logln _args ; } while (0)
 #else
 #define LOGLN0(_args)
 #endif
 #if LOG_LEVEL > 10
-#define LOGLN10(_args) do { LOG_PRE logln _args ; } while (0)
+#define LOGLN10(_args) do { LOG_PRE wtv_logln _args ; } while (0)
 #else
 #define LOGLN10(_args)
 #endif
+
+#define xnew(type_, count_) (type_ *) malloc(count_ * sizeof(type_))
+#define xnew0(type_, count_) (type_ *) calloc(count_, sizeof(type_))
 
 #ifdef __cplusplus
 }

@@ -23,7 +23,7 @@ wtv_out_stream(struct wtv_info* winfo, struct stream* out_s)
     int bytes;
     struct stream* lout_s;
 
-    lout_s = (struct stream*)calloc(1, sizeof(struct stream));
+    lout_s = xnew0(struct stream, 1);
     if (lout_s == NULL)
     {
         return 1;
@@ -34,7 +34,7 @@ wtv_out_stream(struct wtv_info* winfo, struct stream* out_s)
         free(lout_s);
         return 2;
     }
-    lout_s->data = (char*)malloc(bytes);
+    lout_s->data = xnew(char, bytes);
     if (lout_s->data == NULL)
     {
         free(lout_s);
@@ -176,17 +176,17 @@ wtv_process_msg_audio(struct wtv_info* winfo)
     {
         if (winfo->audio_bytes < channels * 16 * 1024)
         {
-            audio_s = (struct stream*)calloc(1, sizeof(struct stream));
+            audio_s = xnew0(struct stream, 1);
             if (audio_s == NULL)
             {
-                LOGLN0((winfo, LOG_ERROR, LOGS "calloc failed", LOGP));
+                LOGLN0((winfo, LOG_ERROR, LOGS "xnew0 failed", LOGP));
                 return 5;
             }
             audio_s->size = bytes;
-            audio_s->data = (char*)malloc(audio_s->size);
+            audio_s->data = xnew(char, audio_s->size);
             if (audio_s->data == NULL)
             {
-                LOGLN0((winfo, LOG_ERROR, LOGS "malloc failed", LOGP));
+                LOGLN0((winfo, LOG_ERROR, LOGS "xnew failed", LOGP));
                 free(audio_s);
                 return 6;
             }
@@ -386,8 +386,17 @@ wtv_start(struct wtv_info* winfo)
 {
     struct stream* out_s;
 
-    out_s = (struct stream*)calloc(1, sizeof(struct stream));
-    out_s->data = (char*)malloc(1024 * 1024);
+    out_s = xnew0(struct stream, 1);
+    if (out_s == NULL)
+    {
+        return 1;
+    }
+    out_s->data = xnew(char, 1024 * 1024);
+    if (out_s->data == NULL)
+    {
+        free(out_s);
+        return 1;
+    }
     out_s->p = out_s->data;
     out_uint32_le(out_s, 1); /* subscribe audio */
     out_uint32_le(out_s, 9);
@@ -468,8 +477,17 @@ wtv_request_frame(struct wtv_info* winfo)
 {
     struct stream* out_s;
 
-    out_s = (struct stream*)calloc(1, sizeof(struct stream));
-    out_s->data = (char*)malloc(1024 * 1024);
+    out_s = xnew0(struct stream, 1);
+    if (out_s == NULL)
+    {
+        return 1;
+    }
+    out_s->data = xnew(char, 1024 * 1024);
+    if (out_s->data == NULL)
+    {
+        free(out_s);
+        return 1;
+    }
     out_s->p = out_s->data;
     out_uint32_le(out_s, 3); /* request video frame */
     out_uint32_le(out_s, 8);
@@ -496,8 +514,18 @@ wtv_read(struct wtv_info* winfo)
     LOGLN10((winfo, LOG_INFO, LOGS, LOGP));
     if (winfo->in_s == NULL)
     {
-        winfo->in_s = (struct stream*)calloc(1, sizeof(struct stream));
-        winfo->in_s->data = (char*)malloc(1024 * 1024);
+        winfo->in_s = xnew0(struct stream, 1);
+        if (winfo->in_s == NULL)
+        {
+            return 1;
+        }
+        winfo->in_s->data = xnew(char, 1024 * 1024);
+        if (winfo->in_s->data == NULL)
+        {
+            free(winfo->in_s);
+            winfo->in_s = NULL;
+            return 1;
+        }
         winfo->in_s->p = winfo->in_s->data;
         winfo->in_s->end = winfo->in_s->data + 8;
     }
@@ -653,7 +681,7 @@ wtv_vsnprintf(char* buffer, size_t count, const char *format, va_list ap)
 
 /*****************************************************************************/
 int
-logln(struct wtv_info* winfo, int log_level, const char* format, ...)
+wtv_logln(struct wtv_info* winfo, int log_level, const char* format, ...)
 {
     va_list ap;
     char* log_line;
@@ -665,7 +693,7 @@ logln(struct wtv_info* winfo, int log_level, const char* format, ...)
     }
     if (log_level < g_log_level)
     {
-        log_line = (char*)malloc(2048);
+        log_line = xnew(char, 2048);
         va_start(ap, format);
         wtv_vsnprintf(log_line, 1024, format, ap);
         va_end(ap);
