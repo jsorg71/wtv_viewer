@@ -49,7 +49,6 @@ public:
     FXSlider* m_slider;
     bool m_muted;
     int m_saved_volume;
-;
 public:
     long onEventRead(FXObject* obj, FXSelector sel, void* ptr);
     long onEventWrite(FXObject* obj, FXSelector sel, void* ptr);

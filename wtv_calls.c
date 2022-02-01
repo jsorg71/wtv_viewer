@@ -26,19 +26,19 @@ wtv_out_stream(struct wtv_info* winfo, struct stream* out_s)
     lout_s = xnew0(struct stream, 1);
     if (lout_s == NULL)
     {
-        return 1;
+        return WTV_ERROR_MEMORY;
     }
     bytes = (int)(out_s->end - out_s->data);
     if ((bytes < 1) || (bytes > 1024 * 1024))
     {
         free(lout_s);
-        return 2;
+        return WTV_ERROR_PARAMETER;
     }
     lout_s->data = xnew(char, bytes);
     if (lout_s->data == NULL)
     {
         free(lout_s);
-        return 3;
+        return WTV_ERROR_MEMORY;
     }
     lout_s->p = lout_s->data;
     out_uint8p(lout_s, out_s->data, bytes);
@@ -54,8 +54,7 @@ wtv_out_stream(struct wtv_info* winfo, struct stream* out_s)
         winfo->out_s_tail->next = lout_s;
         winfo->out_s_tail = lout_s;
     }
-    wtv_gui_sched_write(winfo);
-    return 0;
+    return wtv_gui_sched_write(winfo);
 }
 
 /*****************************************************************************/
@@ -110,7 +109,7 @@ wtv_check_audio(struct wtv_info* winfo)
     {
         wtv_gui_sched_audio(winfo);
     }
-    return 0;
+    return WTV_ERROR_NONE;
 }
 
 /*****************************************************************************/
@@ -250,13 +249,13 @@ read_fd(int sck, int* fd)
                     {
                         fds = (int*)CMSG_DATA(cmsg);
                         *fd = *fds;
-                        return 0;
+                        return WTV_ERROR_NONE;
                     }
                 }
             }
         }
     }
-    return 1;
+    return WTV_ERROR_SOCKET;
 }
 
 /*****************************************************************************/
@@ -269,13 +268,13 @@ wtv_process_msg_video(struct wtv_info* winfo)
     int fd_stride;
     int fd_size;
     int fd_bpp;
-    int rv;
+    int error;
     struct stream* in_s;
 
     in_s = winfo->in_s;
     if (!s_check_rem(in_s, 32))
     {
-        return 1;
+        return WTV_ERROR_STREAM;
     }
     in_uint8s(in_s, 4); /* pts */
     in_uint8s(in_s, 4); /* dts */
@@ -288,14 +287,14 @@ wtv_process_msg_video(struct wtv_info* winfo)
     LOGLN10((winfo, LOG_INFO, LOGS "fd %d fd_width %d fd_height %d "
              "fd_stride %d fd_size %d fd_bpp %d", LOGP,
              fd, fd_width, fd_height, fd_stride, fd_size, fd_bpp));
-    rv = read_fd(winfo->sck, &fd);
-    if (rv == 0)
+    error = read_fd(winfo->sck, &fd);
+    if (error == WTV_ERROR_NONE)
     {
         wtv_fd_to_drawable(winfo, fd, fd_width, fd_height, fd_stride, fd_size, fd_bpp);
         close(fd);
         wtv_gui_draw_drawable(winfo);
     }
-    return 0;
+    return error;
 }
 
 /*****************************************************************************/
@@ -309,7 +308,7 @@ wtv_process_msg_version(struct wtv_info* winfo)
     in_s = winfo->in_s;
     if (!s_check_rem(in_s, 12))
     {
-        return 1;
+        return WTV_ERROR_STREAM;
     }
     in_uint32_le(in_s, version_major);
     in_uint32_le(in_s, version_minor);
@@ -317,7 +316,7 @@ wtv_process_msg_version(struct wtv_info* winfo)
     LOGLN0((winfo, LOG_INFO, LOGS "version_major %d version_minor %d "
             "latency %d", LOGP, version_major, version_minor,
             winfo->ms_latency));
-    return 0;
+    return WTV_ERROR_NONE;
 }
 
 /*****************************************************************************/
@@ -328,7 +327,7 @@ wtv_process_msg(struct wtv_info* winfo)
     int rv;
     struct stream* in_s;
 
-    rv = 0;
+    rv = WTV_ERROR_NONE;
     in_s = winfo->in_s;
     in_uint32_le(in_s, code);
     in_uint8s(in_s, 4); /* bytes */
@@ -384,31 +383,34 @@ wtv_connect_to_uds(struct wtv_info* winfo, const char* filename)
 int
 wtv_start(struct wtv_info* winfo)
 {
+    int error;
     struct stream* out_s;
 
     out_s = xnew0(struct stream, 1);
     if (out_s == NULL)
     {
-        return 1;
+        return WTV_ERROR_MEMORY;
     }
     out_s->data = xnew(char, 1024 * 1024);
     if (out_s->data == NULL)
     {
         free(out_s);
-        return 1;
+        return WTV_ERROR_MEMORY;
     }
     out_s->p = out_s->data;
     out_uint32_le(out_s, 1); /* subscribe audio */
     out_uint32_le(out_s, 9);
     out_uint8(out_s, 1); /* on */
     out_s->end = out_s->p;
-    if (wtv_out_stream(winfo, out_s) != 0)
+    error = wtv_out_stream(winfo, out_s);
+    if (error != 0)
     {
-        LOGLN0((winfo, LOG_ERROR, LOGS "wtv_out_stream failed", LOGP));
+        LOGLN0((winfo, LOG_ERROR, LOGS "wtv_out_stream failed, error %d",
+                LOGP, error));
     }
     free(out_s->data);
     free(out_s);
-    return 0;
+    return error;
 }
 
 /*****************************************************************************/
@@ -458,7 +460,7 @@ wtv_stop(struct wtv_info* winfo)
         free(winfo->in_s);
         winfo->in_s = NULL;
     }
-    return 0;
+    return WTV_ERROR_NONE;
 }
 
 /*****************************************************************************/
@@ -475,30 +477,33 @@ wtv_exit(struct wtv_info* winfo)
 int
 wtv_request_frame(struct wtv_info* winfo)
 {
+    int error;
     struct stream* out_s;
 
     out_s = xnew0(struct stream, 1);
     if (out_s == NULL)
     {
-        return 1;
+        return WTV_ERROR_MEMORY;
     }
     out_s->data = xnew(char, 1024 * 1024);
     if (out_s->data == NULL)
     {
         free(out_s);
-        return 1;
+        return WTV_ERROR_MEMORY;
     }
     out_s->p = out_s->data;
     out_uint32_le(out_s, 3); /* request video frame */
     out_uint32_le(out_s, 8);
     out_s->end = out_s->p;
-    if (wtv_out_stream(winfo, out_s) != 0)
+    error = wtv_out_stream(winfo, out_s);
+    if (error != WTV_ERROR_NONE)
     {
-        LOGLN0((winfo, LOG_ERROR, LOGS "wtv_out_stream failed", LOGP));
+        LOGLN0((winfo, LOG_ERROR, LOGS "wtv_out_stream failed, error %d",
+                LOGP, error));
     }
     free(out_s->data);
     free(out_s);
-    return 0;
+    return error;
 }
 
 /*****************************************************************************/
@@ -517,14 +522,14 @@ wtv_read(struct wtv_info* winfo)
         winfo->in_s = xnew0(struct stream, 1);
         if (winfo->in_s == NULL)
         {
-            return 1;
+            return WTV_ERROR_MEMORY;
         }
         winfo->in_s->data = xnew(char, 1024 * 1024);
         if (winfo->in_s->data == NULL)
         {
             free(winfo->in_s);
             winfo->in_s = NULL;
-            return 1;
+            return WTV_ERROR_MEMORY;
         }
         winfo->in_s->p = winfo->in_s->data;
         winfo->in_s->end = winfo->in_s->data + 8;
@@ -534,7 +539,7 @@ wtv_read(struct wtv_info* winfo)
     rv = recv(sck, winfo->in_s->p, toread, 0);
     if (rv < 1)
     {
-        return 1;
+        return WTV_ERROR_RECV;
     }
     winfo->in_s->p += rv;
     LOGLN10((winfo, LOG_INFO, LOGS "recv rv %d", LOGP, rv));
@@ -548,12 +553,12 @@ wtv_read(struct wtv_info* winfo)
             if ((bytes < 8) || (bytes > 1024 * 1024))
             {
                 LOGLN0((winfo, LOG_ERROR, LOGS "bad bytes %d", LOGP, bytes));
-                return 1;
+                return WTV_ERROR_PARAMETER;
             }
             winfo->in_s->end = winfo->in_s->data + bytes;
         }
     }
-    rv = 0;
+    rv = WTV_ERROR_NONE;
     if (winfo->in_s->p == winfo->in_s->end)
     {
         LOGLN10((winfo, LOG_INFO, LOGS "got all", LOGP));
@@ -584,7 +589,7 @@ wtv_write(struct wtv_info* winfo)
         if (sent < 1)
         {
             /* error */
-            return 1;
+            return WTV_ERROR_SEND;
         }
         else
         {
@@ -606,7 +611,7 @@ wtv_write(struct wtv_info* winfo)
             }
         }
     }
-    return 0;
+    return WTV_ERROR_NONE;
 }
 
 /*****************************************************************************/
@@ -618,12 +623,12 @@ get_mstime(int* mstime)
 
     if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
     {
-        return 1;
+        return WTV_ERROR_CLOCK;
     }
     the_tick = ts.tv_nsec / 1000000;
     the_tick += ts.tv_sec * 1000;
     *mstime = the_tick;
-    return 0;
+    return WTV_ERROR_NONE;
 }
 
 /*****************************************************************************/
@@ -635,7 +640,7 @@ wtv_print_stats(struct wtv_info* winfo)
     wtv_pa_get_latency(winfo->pa, &latency);
     LOGLN0((winfo, LOG_INFO, LOGS "left over audio_bytes %d pa latency %d",
             LOGP, winfo->audio_bytes, latency));
-    return 0;
+    return WTV_ERROR_NONE;
 }
 
 static int g_log_level = 4;
@@ -689,7 +694,7 @@ wtv_logln(struct wtv_info* winfo, int log_level, const char* format, ...)
 
     if (winfo == NULL)
     {
-        return 0;
+        return WTV_ERROR_NONE;
     }
     if (log_level < g_log_level)
     {
@@ -703,7 +708,7 @@ wtv_logln(struct wtv_info* winfo, int log_level, const char* format, ...)
         wtv_gui_writeln(winfo, log_line + 1024);
         free(log_line);
     }
-    return 0;
+    return WTV_ERROR_NONE;
 }
 
 /*****************************************************************************/
@@ -714,11 +719,11 @@ wtv_set_volume(struct wtv_info* winfo)
 
     LOGLN10((winfo, LOG_INFO, LOGS "volume %d", LOGP, winfo->volume));
     error = wtv_pa_set_volume(winfo->pa, winfo->volume);
-    if (error != 0)
+    if (error != WTV_ERROR_NONE)
     {
         LOGLN0((winfo, LOG_ERROR, LOGS "wtv_pa_set_volume failed error %d",
                 LOGP, error));
         return error;
     }
-    return 0;
+    return WTV_ERROR_NONE;
 }

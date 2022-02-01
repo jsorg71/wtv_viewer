@@ -2,6 +2,15 @@
 #if !defined(WTV_CALLS_H)
 #define WTV_CALLS_H
 
+#define WTV_ERROR_NONE          0
+#define WTV_ERROR_MEMORY        1
+#define WTV_ERROR_PARAMETER     2
+#define WTV_ERROR_STREAM        3
+#define WTV_ERROR_SOCKET        4
+#define WTV_ERROR_SEND          5
+#define WTV_ERROR_RECV          6
+#define WTV_ERROR_CLOCK         7
+
 struct wtv_info
 {
     void* gui_obj;
