@@ -24,9 +24,10 @@ FXIMPLEMENT(PickerDialog, FXDialogBox, PickerDialogMap,
 /*****************************************************************************/
 PickerDialog::PickerDialog():FXDialogBox()
 {
+    m_app = NULL;
     m_ok_but = NULL;
     m_cancel_but = NULL;
-    m_app = NULL;
+    m_list = NULL;
     m_wtv = NULL;
 }
 
