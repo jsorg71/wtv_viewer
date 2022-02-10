@@ -227,12 +227,13 @@ read_fd(int sck, int* fd)
     char text[4];
     int* fds;
 
+    memset(&iov, 0, sizeof(iov));
     iov.iov_base = text;
     iov.iov_len = 4;
-    msg.msg_name = NULL;
-    msg.msg_namelen = 0;
+    memset(&msg, 0, sizeof(msg));
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;
+    memset(control, 0, sizeof(control));
     msg.msg_control = control;
     msg.msg_controllen = sizeof(control);
     size = recvmsg(sck, &msg, 0);
